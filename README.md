@@ -22,7 +22,7 @@ The trajectory panel's **Map** toggle draws local telemetry over OpenStreetMap t
 ROS 2 C++ node adapts PX4 messages to the shared core exported by the uav_core ament package. It supports heartbeat warmup, bounded requests, waypoint parameters, an abort service and completion from fresh landed/disarmed observations. Command acceptance never substitutes for observed state.
 Launch/runbook targets Ubuntu 22.04 + ROS 2 Humble + PX4 v1.16.0 + Gazebo Harmonic.
 An automated PX4 SITL acceptance job (`.github/workflows/sitl.yml`, PX4's headless SIH quadrotor) flies smoke, waypoint and abort missions on CI and keeps ULogs as evidence; see [installation](docs/installation/setup.md#automated-sitl-acceptance-headless-ci). Gazebo runs remain manual.
-It must pass target-host acceptance before being called a working PX4 simulation MVP.
+On CI it compiles, connects to PX4 v1.16 through the Micro XRCE-DDS agent and passes smoke, square-waypoint and operator-abort missions on PX4's SIH quadrotor, with landings confirmed by PX4's own land detector. Gazebo (`gz_x500`) runs and real-airframe tuning of the tracking monitor remain manual.
 
 ```bash
 bash scripts/test_core.sh
