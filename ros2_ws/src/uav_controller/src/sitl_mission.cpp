@@ -1,4 +1,5 @@
 #include "uav/mission_controller.hpp"
+#include "uav/params.hpp"
 #include <chrono>
 #include <cstdlib>
 #include <limits>
@@ -105,24 +106,21 @@ public:
     const char *guard = std::getenv("UAV_SIMULATION_ONLY");
     if (!guard || std::string_view(guard) != "1")
       throw std::runtime_error("use scripts/run_controller.sh in isolated SITL environment");
-    uav::MissionConfig config;
-    config.limits.max_altitude = declare_parameter("max_altitude", 15.0);
-    config.limits.radius = declare_parameter("geofence_radius", 40.0);
-    config.limits.max_speed = declare_parameter("max_speed", 2.0);
-    config.limits.stale_seconds = declare_parameter("stale_seconds", 2.0);
-    config.limits.min_battery = declare_parameter("min_battery", .2);
-    config.deadline = declare_parameter("mission_deadline", 90.0);
-    config.leg_timeout = declare_parameter("leg_timeout", 30.0);
-    config.tracking_limit = declare_parameter("tracking_limit", 3.0);
-    config.tracking_seconds = declare_parameter("tracking_seconds", 1.0);
-    const auto height = declare_parameter("takeoff_height", 5.0);
-    const auto route =
-        declare_parameter<std::vector<double>>("waypoints_enu", std::vector<double>{});
-    config.waypoints = {{0, 0, height}};
-    if (route.size() % 3 != 0 || route.size() > 189)
-      throw std::invalid_argument("waypoints_enu requires up to 63 ENU triples");
-    for (size_t i = 0; i < route.size(); i += 3)
-      config.waypoints.push_back({route[i], route[i + 1], route[i + 2]});
+    // Defaults and the parameter-to-mission translation live in uav/params.hpp, shared with
+    // the scenario runner so `uav_scenarios --config` tests exactly what this node flies.
+    uav::NodeParams p;
+    p.max_altitude = declare_parameter("max_altitude", p.max_altitude);
+    p.geofence_radius = declare_parameter("geofence_radius", p.geofence_radius);
+    p.max_speed = declare_parameter("max_speed", p.max_speed);
+    p.stale_seconds = declare_parameter("stale_seconds", p.stale_seconds);
+    p.min_battery = declare_parameter("min_battery", p.min_battery);
+    p.mission_deadline = declare_parameter("mission_deadline", p.mission_deadline);
+    p.leg_timeout = declare_parameter("leg_timeout", p.leg_timeout);
+    p.tracking_limit = declare_parameter("tracking_limit", p.tracking_limit);
+    p.tracking_seconds = declare_parameter("tracking_seconds", p.tracking_seconds);
+    p.takeoff_height = declare_parameter("takeoff_height", p.takeoff_height);
+    p.waypoints_enu = declare_parameter("waypoints_enu", p.waypoints_enu);
+    const auto config = p.mission();
     mission_ = std::make_unique<uav::MissionController>(config);
     auto q = rclcpp::SensorDataQoS().keep_last(5);
     heartbeat_ = create_publisher<OffboardControlMode>(

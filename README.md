@@ -10,7 +10,7 @@ The dashboard was checked in headless Chromium against harness replays (nominal 
 ## What runs now
 - Modular C++20 core: explicit ENU/NED types, independent safety supervisor, validated waypoint plans and a shared deterministic MissionController.
 - Kinematic harness using the same mission engine as ROS: nominal waypoints, low battery, stale telemetry, geofence, operator abort and command rejection.
-- Fault-injection safety suite: 17 scenarios (wind, battery, GPS loss/jump, estimator reset, motor failure, telemetry freeze/jitter, control-loop stall, abort, rejected/ignored commands, stuck land detector) checked by independent invariants, gated in CI and summarised as an HTML/Markdown safety report. See [fault scenarios](docs/testing/fault-scenarios.md).
+- Fault-injection safety suite: 17 scenarios (wind, battery, GPS loss/jump, estimator reset, motor failure, telemetry freeze/jitter, control-loop stall, abort, rejected/ignored commands, stuck land detector) checked by independent invariants, plus envelope sweeps (wind, position jump, telemetry gap, loop stall) that chart where a mission stops completing. Runs against any node parameter file (`--config`), gated in CI and summarised as an HTML/Markdown safety report. See [fault scenarios](docs/testing/fault-scenarios.md).
 - React/TypeScript/Vite/Recharts read-only dashboard: mission phase timeline, waypoint progress, auto-zoom local trajectory or a geographic map view (local ENU telemetry drawn around a display origin; not GPS), altitude/battery charts, event log, stale detection, auto-reconnect, light/dark themes and JSONL export.
 - Read-only WebSocket replay, plus ROS 2 live telemetry bridge source.
 - Offline synthetic health detection and route energy experiments with measured evaluation reports.
@@ -28,6 +28,7 @@ It must pass target-host acceptance before being called a working PX4 simulation
 bash scripts/test_core.sh
 bash scripts/run_demo.sh
 bash scripts/run_scenarios.sh   # writes artifacts/scenarios/safety-report.html
+bash scripts/run_scenarios.sh --config config/waypoint-mission.yaml --out artifacts/scenarios/waypoint-mission
 python3 -m unittest discover -s tests/integration -v
 ```
 Full execution commands, expected output and blockers: [installation](docs/installation/setup.md).

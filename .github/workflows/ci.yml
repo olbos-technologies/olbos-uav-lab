@@ -21,7 +21,12 @@ jobs:
       - run: clang-format --dry-run --Werror core/include/uav/*.hpp core/*.cpp tests/unit/*.cpp ros2_ws/src/uav_controller/src/sitl_mission.cpp
       - run: bash scripts/run_demo.sh && python3 -m unittest discover -s tests/integration -v
       - name: Fault-injection safety report
-        run: bash scripts/run_scenarios.sh && cat artifacts/scenarios/safety-report.md >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          bash scripts/run_scenarios.sh
+          cat artifacts/scenarios/safety-report.md >> "$GITHUB_STEP_SUMMARY"
+          for c in config/*.yaml; do
+            bash scripts/run_scenarios.sh --config "$c" --out "artifacts/scenarios/$(basename "$c" .yaml)"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
