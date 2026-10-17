@@ -233,7 +233,8 @@ inline Result run(const Scenario &s, bool keep_trace = false) {
            "arm only requested with valid, fresh telemetry and battery"}},
       silence{
           {"stop_streaming_on_fault", true, "no offboard setpoints once a fault reason is set"}};
-  std::optional<Enu> last_setpoint;
+  Enu last_setpoint{};
+  bool streamed = false;
   double last_tick = -1;
   const double end = s.config.deadline + s.config.landing_timeout + 10;
   Decision d;
@@ -256,14 +257,13 @@ inline Result run(const Scenario &s, bool keep_trace = false) {
       if (!finite(p) || p.up < -.5 || p.up > lim.max_altitude ||
           std::hypot(p.east, p.north) > lim.radius)
         envelope.fail(t, "setpoint outside envelope");
-      if (last_setpoint && distance(*last_setpoint, p) > lim.max_speed * (t - last_tick) + 1e-6)
-        rate.fail(t, "step " + fixed(distance(*last_setpoint, p), 3) + " m");
+      if (streamed && distance(last_setpoint, p) > lim.max_speed * (t - last_tick) + 1e-6)
+        rate.fail(t, "step " + fixed(distance(last_setpoint, p), 3) + " m");
       if (d.reason != "NORMAL")
         silence.fail(t, "streaming while " + std::string(d.reason));
       last_setpoint = p;
-    } else {
-      last_setpoint.reset();
     }
+    streamed = d.stream;
     last_tick = t;
     if (d.reason != "NORMAL" && r.first_alert.empty()) {
       r.first_alert = d.reason;
