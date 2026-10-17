@@ -1,0 +1,11 @@
+build/
+install/
+log/
+node_modules/
+dist/
+__pycache__/
+*.joblib
+*.onnx
+machine_learning/datasets/*.csv
+artifacts/
+.external/

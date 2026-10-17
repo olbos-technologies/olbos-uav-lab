@@ -1,0 +1,8 @@
+sitl_mission:
+  ros__parameters:
+    max_altitude: 15.0
+    geofence_radius: 40.0
+    max_speed: 2.0
+    stale_seconds: 2.0
+    min_battery: 0.2
+    takeoff_height: 5.0

@@ -1,0 +1,25 @@
+name: standalone-validation
+on: [push, pull_request]
+permissions:
+  contents: read
+concurrency:
+  group: validation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  core:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build && cmake --build build && ctest --test-dir build --output-on-failure
+      - run: python3 -m pip install websockets==15.0.1
+      - run: bash scripts/run_demo.sh && python3 -m unittest discover -s tests/integration -v
+  dashboard:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: cd dashboard && npm ci && npm run build

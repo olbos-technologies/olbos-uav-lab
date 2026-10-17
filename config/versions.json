@@ -1,0 +1,11 @@
+{
+ "target_os":"Ubuntu 22.04 LTS",
+ "ros2":"Humble",
+ "px4_ref":"v1.16.0",
+ "gazebo":"Harmonic (gz-sim8)",
+ "micro_xrce_dds_agent":"v2.4.3",
+ "px4_msgs":"derive messages from exact PX4 checkout using scripts/sync_px4_messages.py",
+ "node":"22.14.0",
+ "status":"documented compatibility target, SITL not validated on initial host",
+ "lock_limitations":"OS/ROS/Gazebo apt patch revisions remain unresolved until target-host installation; record dpkg-query output before regression testing"
+}

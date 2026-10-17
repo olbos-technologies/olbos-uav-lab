@@ -1,0 +1,63 @@
+{
+  "scope": "SYNTHETIC_ONLY, advisory outputs, no flight integration",
+  "features": [
+    "rpm",
+    "voltage",
+    "current",
+    "accel",
+    "gyro",
+    "vibration",
+    "position_error",
+    "temperature"
+  ],
+  "versions": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "sklearn": "1.8.0"
+  },
+  "train_samples": 4000,
+  "test_samples": 2000,
+  "split": "disjoint complete episodes; seeds 41 / 93; test wind shifted",
+  "random_forest": {
+    "precision": 0.9287925696594427,
+    "recall": 1.0,
+    "f1": 0.9630818619582665,
+    "false_positive_rate": 0.06272727272727273,
+    "confusion_matrix": [
+      [
+        1031,
+        69
+      ],
+      [
+        0,
+        900
+      ]
+    ]
+  },
+  "isolation_forest": {
+    "precision": 0.8140610545790934,
+    "recall": 0.9777777777777777,
+    "f1": 0.8884401817264008,
+    "false_positive_rate": 0.18272727272727274,
+    "confusion_matrix": [
+      [
+        899,
+        201
+      ],
+      [
+        20,
+        880
+      ]
+    ]
+  },
+  "batch_inference_ms_per_sample": 0.004300060999980815,
+  "batch_latency_warning": "batch average; not real-time p95/p99",
+  "route_energy_mae_wh": 0.4386740253765561,
+  "route_deterministic_mae_wh": 0.15457615883487727,
+  "limitations": [
+    "faults are artificial shifts",
+    "no calibration or physical validation",
+    "no ONNX export/runtime validation",
+    "route regression must rank already safe candidates only"
+  ]
+}

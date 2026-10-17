@@ -1,0 +1,7 @@
+numpy==2.2.6
+scikit-learn==1.7.2
+joblib==1.5.2
+websockets==15.0.1
+# Optional ONNX export (not installed/tested in the initial host)
+# skl2onnx==1.19.1
+# onnxruntime==1.23.1

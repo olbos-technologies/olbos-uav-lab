@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<package format="3"><name>uav_controller</name><version>0.1.0</version>
+<description>Simulation-only PX4 offboard smoke mission</description>
+<maintainer email="maintainer@example.invalid">Project Maintainer</maintainer><license>MIT</license>
+<buildtool_depend>ament_cmake</buildtool_depend><depend>rclcpp</depend><depend>px4_msgs</depend>
+<export><build_type>ament_cmake</build_type></export></package>

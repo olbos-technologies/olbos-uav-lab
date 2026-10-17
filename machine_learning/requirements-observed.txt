@@ -1,0 +1,5 @@
+# Observed initial runtime; Python 3.12.14. Not the Jammy target lock.
+numpy==2.3.5
+scikit-learn==1.8.0
+joblib==1.5.3
+websockets==16.0
