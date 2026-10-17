@@ -5,9 +5,10 @@ import { parseSample, type Sample, type TelemetryEvent } from './types';
 export type Link = 'connecting' | 'open' | 'closed';
 
 const STALE_MS = 2000;
-const MAX_EVENTS = 60;
+export const MAX_EVENTS = 60;
 
-function changes(prev: Sample | undefined, next: Sample, nextId: () => number): TelemetryEvent[] {
+// Events implied by moving from one sample to the next; shared by live telemetry and file replay.
+export function changes(prev: Sample | undefined, next: Sample, nextId: () => number): TelemetryEvent[] {
   const out: TelemetryEvent[] = [];
   const add = (label: string, detail: string, tone: TelemetryEvent['tone']) =>
     out.push({ id: nextId(), time_s: next.time_s, label, detail, tone });
@@ -24,7 +25,7 @@ function changes(prev: Sample | undefined, next: Sample, nextId: () => number): 
 
 // Read-only telemetry subscription: validates every frame, reconnects with backoff and
 // starts a new session when the source clock restarts (e.g. replay reconnect).
-export function useTelemetry(url: string, capacity = 600) {
+export function useTelemetry(url: string, capacity = 600, enabled = true) {
   const [rows, setRows] = useState<Sample[]>([]);
   const [events, setEvents] = useState<TelemetryEvent[]>([]);
   const [link, setLink] = useState<Link>('connecting');
@@ -36,6 +37,7 @@ export function useTelemetry(url: string, capacity = 600) {
   const eventId = useRef(0);
 
   useEffect(() => {
+    if (!enabled) return;
     let disposed = false;
     let socket: WebSocket | undefined;
     let retry: number | undefined;
@@ -90,7 +92,7 @@ export function useTelemetry(url: string, capacity = 600) {
       window.clearTimeout(retry);
       socket?.close();
     };
-  }, [url, capacity]);
+  }, [url, capacity, enabled]);
 
   const clear = useCallback(() => {
     setRows([]);

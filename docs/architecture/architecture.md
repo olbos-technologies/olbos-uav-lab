@@ -102,7 +102,9 @@ ReturnToLaunch is an enum reservation only; no RTL execution is implemented. No 
 - `telemetry/useTelemetry.ts` owns the WebSocket: bounded 600-sample window, 2 s staleness, exponential reconnect
   (0.5 s to 10 s), a new session when the source clock restarts, and the derived state/waypoint/alert event log.
 - `telemetry/mission.ts` maps controller states, outcomes and alert codes to display phases and severities.
-- `components/` holds stateless views (timeline, metrics, trajectory, charts, safety, event log).
+- `telemetry/useReplay.ts` replays a JSONL trace file on its own clock (play/pause, 0.5–10× speed, seek); the live socket
+  is closed meanwhile. Invalid lines are counted and skipped; files over 20 MB are refused.
+- `components/` holds stateless views (timeline, metrics, trajectory and map, charts, safety, event log, replay bar).
 The bridge URL defaults to `ws://127.0.0.1:8765`; `?ws=` may override it with another loopback address only.
 Mission phases appear only when a sample carries `state`/`outcome` (harness replay). The live bridge does not yet
 publish controller state, so the dashboard shows its raw PX4 nav_state instead of inferring a phase.

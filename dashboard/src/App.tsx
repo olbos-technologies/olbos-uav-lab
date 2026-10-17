@@ -1,12 +1,15 @@
+import { useRef, useState, type DragEvent } from 'react';
 import { EventLog } from './components/EventLog';
 import { MetricCard } from './components/MetricCard';
 import { MissionTimeline } from './components/MissionTimeline';
+import { ReplayBar } from './components/ReplayBar';
 import { SafetyPanel } from './components/SafetyPanel';
 import { TelemetryChart } from './components/TelemetryChart';
 import { TrajectoryMap } from './components/TrajectoryMap';
 import { telemetryUrl } from './config';
 import { fmt, humanize } from './telemetry/mission';
 import { palettes, useTheme } from './telemetry/theme';
+import { MAX_TRACE_BYTES, parseTrace, useReplay, type Trace } from './telemetry/useReplay';
 import { useTelemetry, type Link } from './telemetry/useTelemetry';
 import type { Sample } from './telemetry/types';
 
@@ -27,15 +30,39 @@ function exportLog(rows: Sample[]) {
 }
 
 export function App() {
-  const { rows, events, latest: d, link, error, stale, retryIn, clear } = useTelemetry(url);
+  const [trace, setTrace] = useState<Trace | null>(null);
+  const [fileError, setFileError] = useState('');
+  const fileInput = useRef<HTMLInputElement>(null);
+  // The live socket is closed while a trace file is replayed.
+  const live = useTelemetry(url, 600, !trace);
+  const replay = useReplay(trace);
+  const { rows, events, latest: d, stale } = replay ?? live;
   const theme = useTheme();
   const palette = palettes[theme.resolved];
-  const status = linkLabel(link, stale, retryIn);
+  const status = replay
+    ? { text: `Replay · ${(replay.t - replay.start).toFixed(1)} s`, tone: 'info' }
+    : linkLabel(live.link, live.stale, live.retryIn);
+  const error = replay ? fileError : fileError || live.error;
+
+  const openFile = async (file?: File) => {
+    if (!file) return;
+    try {
+      if (file.size > MAX_TRACE_BYTES) throw new Error('Trace larger than 20 MB');
+      setTrace(parseTrace(file.name, await file.text()));
+      setFileError('');
+    } catch (e) {
+      setFileError(`${file.name}: ${e instanceof Error ? e.message : 'unreadable'}`);
+    }
+  };
+  const onDrop = (e: DragEvent) => {
+    e.preventDefault();
+    void openFile(e.dataTransfer.files[0]);
+  };
   const battery = typeof d?.battery === 'number' ? d.battery : undefined;
   const elapsed = rows.length ? rows[rows.length - 1].time_s - rows[0].time_s : undefined;
 
   return (
-    <div className="shell">
+    <div className="shell" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
       <header className="topbar">
         <div className="brand">
           <svg viewBox="0 0 32 32" aria-hidden="true">
@@ -55,9 +82,24 @@ export function App() {
           <button className="ghost" onClick={theme.cycle} title="Toggle colour theme">
             Theme: {theme.choice}
           </button>
-          <button className="ghost" onClick={clear} disabled={!rows.length}>
-            Clear
+          <button className="ghost" onClick={() => fileInput.current?.click()} title="Replay a .jsonl trace (or drop one on the page)">
+            Open trace
           </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".jsonl,.json,.txt,application/x-ndjson"
+            hidden
+            onChange={(e) => {
+              void openFile(e.target.files?.[0]);
+              e.target.value = '';
+            }}
+          />
+          {!replay && (
+            <button className="ghost" onClick={live.clear} disabled={!rows.length}>
+              Clear
+            </button>
+          )}
           <button onClick={() => exportLog(rows)} disabled={!rows.length}>
             Export JSONL
           </button>
@@ -69,16 +111,31 @@ export function App() {
           Source <b>{d?.source ?? 'awaiting telemetry'}</b>
         </span>
         <span>
-          Transport <b>{d?.transport ?? '—'}</b>
+          Transport <b>{replay ? 'FILE' : (d?.transport ?? '—')}</b>
         </span>
         <span>
-          Bridge <b>{url}</b>
+          {replay ? 'File' : 'Bridge'} <b>{replay ? trace!.name : url}</b>
         </span>
         <span>Read-only monitoring</span>
         {error && <span className="tone-warn">{error}</span>}
       </div>
 
       <main>
+        {replay && (
+          <ReplayBar
+            name={trace!.name}
+            rejected={trace!.rejected}
+            t={replay.t}
+            start={replay.start}
+            end={replay.end}
+            playing={replay.playing}
+            speed={replay.speed}
+            onToggle={replay.toggle}
+            onSeek={replay.seek}
+            onSpeed={replay.setSpeed}
+            onExit={() => setTrace(null)}
+          />
+        )}
         <MissionTimeline rows={rows} latest={d} />
 
         <section className="metrics">
