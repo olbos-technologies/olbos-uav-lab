@@ -3,6 +3,7 @@ import { alertTone, humanize, outcomeTone } from './mission';
 import { parseSample, type Sample, type TelemetryEvent } from './types';
 
 export type Link = 'connecting' | 'open' | 'closed';
+export type DemoCommand = 'start' | 'land' | 'abort' | 'inject_fault' | 'reset';
 
 const STALE_MS = 2000;
 const MAX_EVENTS = 60;
@@ -32,8 +33,13 @@ export function useTelemetry(url: string, capacity = 600) {
   const [lastAt, setLastAt] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [retryAt, setRetryAt] = useState(0);
+  const [commandStatus, setCommandStatus] = useState('');
+  const [commandPending, setCommandPending] = useState(false);
   const previous = useRef<Sample | undefined>(undefined);
   const eventId = useRef(0);
+  const socketRef = useRef<WebSocket | undefined>(undefined);
+  const pendingCommandId = useRef('');
+  const commandTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     let disposed = false;
@@ -51,12 +57,24 @@ export function useTelemetry(url: string, capacity = 600) {
       }
       socket.onopen = () => {
         attempt = 0;
+        socketRef.current = socket;
         setLink('open');
         setError('');
       };
       socket.onmessage = (e) => {
         let sample: Sample;
         try {
+          const frame: unknown = JSON.parse(String(e.data));
+          if (frame && typeof frame === 'object' && (frame as Record<string, unknown>).type === 'ack') {
+            const ack = frame as Record<string, unknown>;
+            if (typeof ack.request_id === 'string' && ack.request_id === pendingCommandId.current) {
+              window.clearTimeout(commandTimer.current);
+              pendingCommandId.current = '';
+              setCommandPending(false);
+              setCommandStatus(typeof ack.message === 'string' ? ack.message : 'Command response received.');
+            }
+            return;
+          }
           sample = parseSample(String(e.data));
         } catch {
           setError('Malformed telemetry rejected');
@@ -75,6 +93,10 @@ export function useTelemetry(url: string, capacity = 600) {
       };
       socket.onerror = () => setError('Telemetry bridge unavailable');
       socket.onclose = () => {
+        if (socketRef.current === socket) socketRef.current = undefined;
+        window.clearTimeout(commandTimer.current);
+        pendingCommandId.current = '';
+        setCommandPending(false);
         if (disposed) return;
         setLink('closed');
         const delay = Math.min(10_000, 500 * 2 ** attempt++);
@@ -88,6 +110,8 @@ export function useTelemetry(url: string, capacity = 600) {
       disposed = true;
       window.clearInterval(clock);
       window.clearTimeout(retry);
+      window.clearTimeout(commandTimer.current);
+      socketRef.current = undefined;
       socket?.close();
     };
   }, [url, capacity]);
@@ -98,8 +122,33 @@ export function useTelemetry(url: string, capacity = 600) {
     previous.current = undefined;
   }, []);
 
+  const sendCommand = useCallback((command: DemoCommand) => {
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      setCommandStatus('Connect to the local simulation demo first.');
+      return;
+    }
+    const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    try {
+      socket.send(JSON.stringify({ type: 'command', command, request_id: requestId }));
+      pendingCommandId.current = requestId;
+      setCommandPending(true);
+      setCommandStatus(`Sending ${command.replace('_', ' ')}…`);
+      window.clearTimeout(commandTimer.current);
+      commandTimer.current = window.setTimeout(() => {
+        if (pendingCommandId.current !== requestId) return;
+        pendingCommandId.current = '';
+        setCommandPending(false);
+        setCommandStatus('No response from the simulation bridge.');
+      }, 3000);
+    } catch {
+      setCommandPending(false);
+      setCommandStatus('Could not send command to the simulation bridge.');
+    }
+  }, []);
+
   const latest = rows.at(-1);
   const stale = !lastAt || now - lastAt > STALE_MS || (latest?.age_s ?? 0) > STALE_MS / 1000;
   const retryIn = link === 'closed' ? Math.max(0, Math.ceil((retryAt - now) / 1000)) : 0;
-  return { rows, events, latest, link, error, stale, retryIn, clear };
+  return { rows, events, latest, link, error, stale, retryIn, clear, sendCommand, commandPending, commandStatus };
 }
