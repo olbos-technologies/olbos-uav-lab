@@ -54,7 +54,8 @@ jobs:
           git -C "$PX4_DIR" submodule deinit -f platforms/nuttx/NuttX/nuttx platforms/nuttx/NuttX/apps
       - name: Install PX4 toolchain (no NuttX, no Gazebo)
         run: bash "$PX4_DIR/Tools/setup/ubuntu.sh" --no-nuttx --no-sim-tools
-      - uses: actions/cache@v4
+      # Caches are saved right after their build succeeds, so a later failing step does not discard them.
+      - uses: actions/cache/restore@v4
         with:
           path: ~/.ccache
           key: px4-ccache-${{ env.PX4_REF }}-${{ github.run_id }}
@@ -63,8 +64,12 @@ jobs:
         env:
           CCACHE_DIR: /home/runner/.ccache
         run: make -C "$PX4_DIR" px4_sitl_default
+      - uses: actions/cache/save@v4
+        with:
+          path: ~/.ccache
+          key: px4-ccache-${{ env.PX4_REF }}-${{ github.run_id }}
       - id: agent-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ~/agent-install
           key: xrce-agent-${{ env.AGENT_REF }}-jammy
@@ -75,6 +80,11 @@ jobs:
           cmake -S /tmp/agent -B /tmp/agent-build -DCMAKE_INSTALL_PREFIX="$HOME/agent-install"
           cmake --build /tmp/agent-build -j"$(nproc)"
           cmake --install /tmp/agent-build
+      - if: steps.agent-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/agent-install
+          key: xrce-agent-${{ env.AGENT_REF }}-jammy
       - name: Put agent on PATH
         run: |
           echo "$HOME/agent-install/bin" >> "$GITHUB_PATH"
