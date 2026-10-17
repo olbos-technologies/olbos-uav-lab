@@ -5,6 +5,7 @@
  {"name":"stale","at_s":6,"expected":"ABORTED, STALE_TELEMETRY"},
  {"name":"geofence","at_s":6,"expected":"ABORTED, GEOFENCE"}
  ],
+ "fault_injection":"17 scenarios defined in core/include/uav/simulation.hpp catalog(); run bash scripts/run_scenarios.sh",
  "sitl_pending":[
  {"name":"takeoff_land","world":"default x500","expected":"observed climb to 5m, landed and disarmed by 90s"},
  {"name":"heartbeat_loss","action":"terminate controller after climb","expected":"PX4 enters Land after COM_OF_LOSS_T; confirm ULog"},

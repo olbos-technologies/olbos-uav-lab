@@ -169,6 +169,17 @@ TEST(MissionController, IgnoredLandRequestRetriedUntilLandingTimeout) {
   EXPECT_EQ(d.outcome, uav::Outcome::Failed);
   EXPECT_EQ(d.reason, "LANDING_UNVERIFIED");
 }
+TEST(MissionController, TrackingErrorStopsStreaming) {
+  Harness h;
+  h.airborne();
+  h.observation.telemetry.position.east += 4;
+  uav::Decision d;
+  for (int i = 0; i < 30 && d.reason == "NORMAL"; ++i)
+    d = h.step(false);
+  EXPECT_EQ(d.reason, "TRACKING_ERROR");
+  EXPECT_FALSE(d.stream);
+  EXPECT_EQ(d.state, uav::State::Landing);
+}
 TEST(MissionController, InvalidPositionPreemptsControl) {
   Harness h;
   h.airborne();

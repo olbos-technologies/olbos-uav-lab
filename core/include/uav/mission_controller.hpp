@@ -27,6 +27,9 @@ struct MissionConfig {
   std::vector<Enu> waypoints{{0, 0, 5}, {10, 0, 5}, {10, 10, 5}, {0, 0, 5}};
   double warmup_seconds = 2, request_interval = 2, deadline = 90, leg_timeout = 30,
          landing_timeout = 40;
+  // Measured position must stay within tracking_limit of the commanded setpoint; a longer
+  // excursion means the vehicle is not following commands (wind, thrust loss, estimator jump).
+  double tracking_limit = 3, tracking_seconds = 1;
   unsigned max_attempts = 3;
   void validate() const {
     limits.validate();
@@ -41,6 +44,9 @@ struct MissionConfig {
     for (double t : {warmup_seconds, request_interval, deadline, leg_timeout, landing_timeout})
       if (!std::isfinite(t) || t <= 0)
         throw std::invalid_argument("invalid timeout");
+    if (!std::isfinite(tracking_limit) || tracking_limit <= limits.arrival_radius ||
+        !std::isfinite(tracking_seconds) || tracking_seconds <= 0)
+      throw std::invalid_argument("invalid tracking monitor");
     // Reject plans that would time out in flight. 1.5x allows for vehicle tracking lag.
     double flight = 0;
     Enu previous{};
@@ -71,7 +77,8 @@ class MissionController {
   MissionManager mission_;
   Outcome outcome_ = Outcome::Running;
   Enu setpoint_{};
-  double last_time_ = -1, entered_ = 0, leg_started_ = 0, land_started_ = -1, last_request_ = -1e9;
+  double last_time_ = -1, entered_ = 0, leg_started_ = 0, land_started_ = -1, last_request_ = -1e9,
+         tracking_since_ = -1;
   unsigned attempts_ = 0;
   size_t waypoint_ = 0;
   bool ever_armed_ = false, aborted_ = false, cancel_ = false, rejected_ = false;
@@ -177,6 +184,14 @@ class MissionController {
       return abort_in_flight("UNEXPECTED_VEHICLE_STATE", now, o);
     if (now - leg_started_ > config_.leg_timeout)
       return abort_in_flight("LEG_TIMEOUT", now, o);
+    if (distance(o.telemetry.position, setpoint_) > config_.tracking_limit) {
+      if (tracking_since_ < 0)
+        tracking_since_ = now;
+      else if (now - tracking_since_ > config_.tracking_seconds)
+        return abort_in_flight("TRACKING_ERROR", now, o);
+    } else {
+      tracking_since_ = -1;
+    }
     auto target = config_.waypoints[waypoint_];
     setpoint_ = step_toward(setpoint_, target, dt, config_.limits.max_speed);
     if (safety_.command(setpoint_) != Fault::None)
