@@ -89,7 +89,7 @@ Fallback landing is still subject to PX4 validity/estimation and requires actual
 ROS queues are bounded (sensor depth 5, publication depth 10). WebSocket bridges run separately with bounded queues,
 2s send deadlines and a latest-snapshot lock; UI retains 600 samples. Replay currently loads its whole input file.
 Mission parameters come from controller.yaml; a separate waypoint-mission.yaml enables the short square mission.
-Dashboard commands remain disabled. The ROS abort service reports only queued intent, not a PX4 acknowledgment or a confirmed landing.
+The dashboard's loopback simulation demo has its own in-memory mission state and synthetic advisory output. Its commands do not reach the shared C++ controller, ROS, PX4, or a vehicle. The production/PX4 dashboard command gateway remains unimplemented. The ROS abort service reports only queued intent, not a PX4 acknowledgment or a confirmed landing.
 
 ## Remaining architecture work
 Target-host ROS build/actual flight tests, estimator reset/source-timestamp handling, position-aware RTL,

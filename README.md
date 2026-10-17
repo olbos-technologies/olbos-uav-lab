@@ -18,6 +18,34 @@ The dashboard was checked in headless Chromium against harness replays (nominal 
 ## Geographic map display
 The trajectory panel's **Map** toggle draws local telemetry over OpenStreetMap tiles around an editable display origin (default: a generic Tulsa map center; your choice is remembered in the browser). The default **Local** view needs no network access; tiles are only requested while Map is selected. This visualizes local east/north offsets; it is **not GPS**, a real position fix, or a navigation aid. The map remains read-only. Configure another compatible XYZ raster tile endpoint with `VITE_MAP_TILE_URL`; see `dashboard/.env.example`. The OpenStreetMap Foundation tile service is best-effort and used here for low-volume development; use a dedicated provider for a public or production service, retain visible attribution, and follow the provider's terms.
 
+## Local dashboard demo: advisory ML and controls
+The dashboard can connect to a separate loopback-only demonstration service. It publishes a deterministic synthetic route, runs the synthetic Random Forest created by `machine_learning/training/train.py`, and accepts `Start`, `Land`, `Abort`, `Test anomaly`, and `Reset` commands for that in-memory demo only. The displayed model result is an advisory from generated sensor features; it is not validated against flight data and never controls the simulation or a vehicle.
+
+Install the pinned Python requirements and build the synthetic model once:
+
+```bash
+python3 -m pip install -r machine_learning/requirements.txt
+python3 machine_learning/training/train.py
+```
+
+Start the demo bridge in one terminal:
+
+```bash
+bash scripts/run_sim_demo.sh
+```
+
+In another terminal, start the dashboard and open the loopback URL:
+
+```bash
+cd dashboard
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:5173/?ws=ws%3A%2F%2F127.0.0.1%3A8766`. The **Safety & health** panel reports the synthetic model label and top-class score. Start a mission, then choose **Test anomaly** to send simulated vibration features through the model. **Land** and **Abort** change only the in-memory demo state and end with an aborted-mission outcome. The bridge binds to `127.0.0.1:8766`, accepts the dashboard's local development origin, and has no PX4, ROS, networked aircraft, or real-command path. The standard telemetry bridge on port 8765 remains read-only.
+
+Run the bridge unit tests with `python3 -m unittest discover -s tests/integration -p 'test_sim_demo.py'` (after installing the pinned Python requirements for the WebSocket package).
+
 ## PX4 integration source
 ROS 2 C++ node adapts PX4 messages to the shared core exported by the uav_core ament package. It supports heartbeat warmup, bounded requests, waypoint parameters, an abort service and completion from fresh landed/disarmed observations. Command acceptance never substitutes for observed state.
 Launch/runbook targets Ubuntu 22.04 + ROS 2 Humble + PX4 v1.16.0 + Gazebo Harmonic.
@@ -55,6 +83,6 @@ See the [0.2 observed results](docs/testing/v0.2-results.md) for actual checks a
 - [Phase roadmap and unfinished deliverables](docs/roadmap.md)
 
 No real-aircraft operation, safety certification, guaranteed ML reliability or production readiness is claimed.
-ML never publishes flight commands. The dashboard command interface is deliberately disabled until an acknowledged command gateway exists.
+ML never publishes flight commands. The command buttons are enabled only for the explicitly labeled local demo source; a production/PX4 command gateway is not implemented.
 Generated datasets, trained models, build outputs, node_modules and external checkouts are ignored.
 Dependencies are partially pinned; target OS package resolution remains to be captured. Repository: olbos-uav-lab (https://github.com/olbos-technologies/olbos-uav-lab)

@@ -27,7 +27,19 @@ function exportLog(rows: Sample[]) {
 }
 
 export function App() {
-  const { rows, events, latest: d, link, error, stale, retryIn, clear } = useTelemetry(url);
+  const {
+    rows,
+    events,
+    latest: d,
+    link,
+    error,
+    stale,
+    retryIn,
+    clear,
+    sendCommand,
+    commandPending,
+    commandStatus,
+  } = useTelemetry(url);
   const theme = useTheme();
   const palette = palettes[theme.resolved];
   const status = linkLabel(link, stale, retryIn);
@@ -74,7 +86,11 @@ export function App() {
         <span>
           Bridge <b>{url}</b>
         </span>
-        <span>Read-only monitoring</span>
+        <span>
+          {d?.source === 'SIMULATION_DEMO'
+            ? 'Interactive local simulation only · no PX4 connection'
+            : 'Read-only monitoring'}
+        </span>
         {error && <span className="tone-warn">{error}</span>}
       </div>
 
@@ -102,7 +118,13 @@ export function App() {
         <section className="main-grid">
           <TrajectoryMap rows={rows} latest={d} />
           <div className="side">
-            <SafetyPanel latest={d} stale={stale} />
+            <SafetyPanel
+              latest={d}
+              stale={stale}
+              sendCommand={sendCommand}
+              commandPending={commandPending}
+              commandStatus={commandStatus}
+            />
             <EventLog events={events} />
           </div>
         </section>
