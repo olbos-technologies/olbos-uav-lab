@@ -103,6 +103,7 @@ jobs:
           { git -C "$PX4_DIR" rev-parse HEAD; cat config/resolved-sources.json 2>/dev/null;
             dpkg-query -W 'ros-humble-*' 2>/dev/null; } > artifacts/sitl/versions.txt || true
       - name: Fly acceptance missions
+        timeout-minutes: 25
         run: bash scripts/sitl/ci_acceptance.sh artifacts/sitl
       - name: Job summary
         if: always()

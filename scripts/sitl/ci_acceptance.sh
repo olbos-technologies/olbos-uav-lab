@@ -41,20 +41,22 @@ cleanup() {
   ((status == 0)) || diagnose
   for p in "${pids[@]}"; do kill "$p" 2>/dev/null || true; done
   pkill -f sitl_mission 2>/dev/null || true
-  wait 2>/dev/null || true
+  sleep 3
+  for p in "${pids[@]}"; do kill -KILL "$p" 2>/dev/null || true; done
+  pkill -KILL -f 'bin/px4|MicroXRCEAgent|sitl_mission' 2>/dev/null || true
   # Flight logs are the acceptance evidence; keep them even when a mission fails.
   cp -r "$PX4_DIR/build/px4_sitl_default/rootfs/log" "$OUT/px4-ulog" 2>/dev/null || true
 }
 trap cleanup EXIT
 
-wait_for() { # wait_for <seconds> <description> <command...>
-  local limit=$1 what=$2
+wait_for() { # wait_for <seconds> <description> <command...>  (wall-clock limit, not attempt count)
+  local deadline=$((SECONDS + $1)) what=$2
   shift 2
-  for ((i = 0; i < limit; i++)); do
+  while ((SECONDS < deadline)); do
     if "$@" >/dev/null 2>&1; then return 0; fi
     sleep 1
   done
-  echo "timed out after ${limit}s waiting for $what" >&2
+  echo "timed out waiting for $what" >&2
   return 1
 }
 
@@ -75,44 +77,60 @@ done
 "$PX4_BIN/px4-param" show UXRCE_DDS_DOM_ID COM_OF_LOSS_T COM_OBL_RC_ACT COM_RC_IN_MODE | tee "$OUT/params.txt"
 "$PX4_BIN/px4-uxrce_dds_client" stop || true
 "$PX4_BIN/px4-uxrce_dds_client" start -t udp -h 127.0.0.1 -p 8888
-wait_for 60 "PX4 topics on ROS domain 42" bash -c "ros2 topic list --no-daemon --spin-time 3 | grep -q /fmu/out/vehicle_status"
-ros2 topic list --no-daemon --spin-time 3 | grep /fmu/ | tee "$OUT/topics.txt"
+wait_for 60 "PX4 topics on ROS domain 42" bash -c "timeout 15 ros2 topic list --no-daemon --spin-time 3 | grep -q /fmu/out/vehicle_status"
+timeout 15 ros2 topic list --no-daemon --spin-time 3 | grep /fmu/ | tee "$OUT/topics.txt" || true
 
 declare -A outcome_name=([1]=COMPLETE [2]=ABORTED_LANDED [3]=FAILED)
 results=()
 failed=0
 
+vehicle_disarmed() { # one bounded sample of vehicle_status; ARMING_STATE_DISARMED = 1
+  local t
+  t=$(timeout 15 ros2 topic list --no-daemon --spin-time 3 | grep /fmu/out/vehicle_status | head -1) || return 1
+  [[ -n $t ]] && timeout 10 ros2 topic echo --once --qos-reliability best_effort "$t" 2>/dev/null | grep -q 'arming_state: 1'
+}
+
+stop_controller() { # SIGINT, then SIGKILL; never wait unbounded
+  local pid=$1
+  kill -INT "$pid" 2>/dev/null || true
+  for ((i = 0; i < 20; i++)); do kill -0 "$pid" 2>/dev/null || break; sleep 0.5; done
+  kill -KILL "$pid" 2>/dev/null || true
+  pkill -KILL -f sitl_mission 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+}
+
 fly() { # fly <name> <config> <expected outcome> [state that triggers ~/abort]
-  local name=$1 config=$2 expect=$3 abort_in=${4:-} log="$OUT/$1.log" aborted=0 code=""
+  local name=$1 config=$2 expect=$3 abort_in=${4:-} log="$OUT/$1.log" aborted=0 code="" note=""
   echo "== Mission $name ($config), expecting $expect"
-  wait_for 60 "vehicle landed and disarmed before $name" bash -c \
-    "ros2 topic echo --once --qos-reliability best_effort \$(ros2 topic list --no-daemon --spin-time 3 | grep /fmu/out/vehicle_status | head -1) \
-     | grep -q 'arming_state: 1'"
+  if ! wait_for 60 "vehicle landed and disarmed before $name" vehicle_disarmed; then
+    note="vehicle not disarmed beforehand"
+  fi
   bash scripts/run_controller.sh "$config" >"$log" 2>&1 &
   local pid=$!
   for ((t = 0; t < 180; t++)); do
     code=$(grep -o 'outcome=[123]' "$log" | head -1 | cut -d= -f2 || true)
     [[ -n $code ]] && break
     if [[ -n $abort_in && $aborted == 0 ]] && grep -q "STATE $abort_in " "$log"; then
-      ros2 service call /sitl_mission/abort std_srvs/srv/Trigger | tee -a "$OUT/$name-abort.txt"
+      timeout 30 ros2 service call /sitl_mission/abort std_srvs/srv/Trigger | tee -a "$OUT/$name-abort.txt" || true
       aborted=1
     fi
     kill -0 "$pid" 2>/dev/null || break
+    ((t % 10 == 0)) && echo "   t=${t}s $(grep -E 'STATE|REQUEST|ACK' "$log" | tail -1 | sed 's/.*\] //')"
     sleep 1
   done
-  kill -INT "$pid" 2>/dev/null || true
-  wait "$pid" 2>/dev/null || true
-  pkill -f sitl_mission 2>/dev/null || true
+  stop_controller "$pid"
   local got=${outcome_name[${code:-0}]:-NO_TERMINAL_OUTCOME}
   local reason
   reason=$(grep -o 'reason=[A-Z_]*' "$log" | tail -1 | cut -d= -f2 || true)
+  [[ -n $note ]] && reason="${reason:-—} ($note)"
   if [[ $got == "$expect" ]]; then
     results+=("| $name | $expect | $got | ${reason:-—} | PASS |")
   else
     results+=("| $name | $expect | $got | ${reason:-—} | **FAIL** |")
     failed=1
   fi
-  grep -E "STATE|REQUEST|ACK" "$log" | tail -40 || true
+  echo "   result: $got (expected $expect), last reason ${reason:-—}"
+  grep -E "STATE|REQUEST|ACK|rror|xception" "$log" | tail -40 || true
 }
 
 fly smoke config/controller.yaml COMPLETE
