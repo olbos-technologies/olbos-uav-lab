@@ -5,5 +5,8 @@ sitl_mission:
     max_speed: 2.0
     stale_seconds: 2.0
     min_battery: 0.2
+    # Seconds from node start; routes that cannot finish within these are rejected at startup.
+    mission_deadline: 90.0
+    leg_timeout: 30.0
     takeoff_height: 5.0
     waypoints_enu: [10.0, 0.0, 5.0, 10.0, 10.0, 5.0, 0.0, 0.0, 5.0]

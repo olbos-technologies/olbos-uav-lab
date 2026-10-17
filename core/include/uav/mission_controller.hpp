@@ -28,6 +28,18 @@ struct MissionConfig {
     for (double t : {warmup_seconds, request_interval, deadline, leg_timeout, landing_timeout})
       if (!std::isfinite(t) || t <= 0)
         throw std::invalid_argument("invalid timeout");
+    // Reject plans that would time out in flight. 1.5x allows for vehicle tracking lag.
+    double flight = 0;
+    Enu previous{};
+    for (auto p : waypoints) {
+      double leg = 1.5 * distance(previous, p) / limits.max_speed;
+      if (leg > leg_timeout)
+        throw std::invalid_argument("waypoint leg exceeds leg timeout");
+      flight += leg;
+      previous = p;
+    }
+    if (warmup_seconds + 2 * request_interval + flight + landing_timeout > deadline)
+      throw std::invalid_argument("route exceeds mission deadline");
   }
 };
 struct Decision {
@@ -78,7 +90,8 @@ class MissionController {
     }
     if (now - last_request_ < config_.request_interval)
       return;
-    if (attempts_ >= config_.max_attempts) {
+    // Land is the fallback for every fault, so it is retried until landing_timeout instead.
+    if (attempts_ >= config_.max_attempts && req != Request::Land) {
       aborted_ = true;
       reason_ = "COMMAND_TIMEOUT";
       outcome_ = Outcome::Failed;

@@ -77,8 +77,11 @@ These are setpoint bounds, not measurements or guarantees of actual vehicle spee
 A timer gap over 0.5s stops streaming. Nonfinite/backward/repeated timestamps fail closed.
 No ML inference is executed in the timing-sensitive loop.
 
-Requests have three attempts, two seconds apart; commands require observed vehicle state even after accepted ACKs.
-Mission deadline is 90s, each leg is limited to 30s, landing verification to 40s. These deterministic defaults live in MissionConfig.
+Offboard/arm requests have three attempts, two seconds apart; Land is retried at the same interval until landing
+verification times out. Commands require observed vehicle state even after accepted ACKs.
+Mission deadline is 90s, each leg is limited to 30s, landing verification to 40s. These deterministic defaults live in MissionConfig;
+the ROS node exposes `mission_deadline` and `leg_timeout`. Plans whose nominal legs (1.5x distance/max speed) or total
+time cannot fit these bounds are rejected before flight.
 Timing exhaustion, rejected commands or faults stop heartbeats. Active abort/safety faults request PX4 Land;
 loss of the process/transport relies on the separately configured PX4 Land-on-offboard-loss action.
 Fallback landing is still subject to PX4 validity/estimation and requires actual SITL evidence.
