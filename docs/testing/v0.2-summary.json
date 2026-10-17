@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "date_utc": "2026-10-17",
+  "core_checks_passed": 25,
+  "ctest_passed": 17,
+  "integration_passed": 7,
+  "dashboard_build": "PASS",
+  "ros_build": "NOT_RUN",
+  "sitl_flight": "NOT_RUN",
+  "ml_retraining": "NOT_RUN",
+  "browser_visual_qa": "NOT_RUN"
+}

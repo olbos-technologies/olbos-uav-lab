@@ -17,4 +17,8 @@ class HarnessTests(unittest.TestCase):
   rows=self.run_scenario('stale');self.assertEqual(rows[-1]['mode'],'ABORTED');self.assertIn('STALE_TELEMETRY',[r['alert'] for r in rows])
  def test_geofence(self):
   rows=self.run_scenario('geofence');self.assertEqual(rows[-1]['mode'],'ABORTED');self.assertIn('GEOFENCE',[r['alert'] for r in rows])
+ def test_abort(self):
+  rows=self.run_scenario('abort');self.assertEqual(rows[-1]['mode'],'ABORTED');self.assertIn('OPERATOR_ABORT',[r['alert'] for r in rows])
+ def test_command_rejection(self):
+  rows=self.run_scenario('reject');self.assertEqual(rows[-1]['mode'],'ABORTED');self.assertIn('COMMAND_REJECTED',[r['alert'] for r in rows])
 if __name__=='__main__':unittest.main()

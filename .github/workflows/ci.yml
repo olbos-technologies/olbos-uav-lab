@@ -10,8 +10,15 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - run: cmake -S . -B build && cmake --build build && ctest --test-dir build --output-on-failure
-      - run: python3 -m pip install websockets==15.0.1
+      - run: sudo apt-get update && sudo apt-get install -y libgtest-dev
+      - run: cmake -S . -B build -DUAV_BUILD_GTEST=ON && cmake --build build && ctest --test-dir build --output-on-failure --output-junit ctest-results.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cpp-test-results
+          path: build/ctest-results.xml
+      - run: python3 -m pip install websockets==15.0.1 clang-format==19.1.7
+      - run: clang-format --dry-run --Werror core/include/uav/*.hpp core/demo.cpp tests/unit/*.cpp ros2_ws/src/uav_controller/src/sitl_mission.cpp
       - run: bash scripts/run_demo.sh && python3 -m unittest discover -s tests/integration -v
   dashboard:
     runs-on: ubuntu-22.04

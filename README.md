@@ -1,20 +1,19 @@
 # Olbos UAV Lab
 
 Autonomous UAV simulation and machine-learning research platform built with C++20, PX4, ROS 2, and Gazebo. MIT licensed.
-**Version 0.1 — tested standalone foundation; PX4 SITL acceptance pending.**
+**Version 0.2 — shared C++ mission architecture; PX4 SITL acceptance pending.**
 
 Dashboard source and production build are included. Screenshot/browser verification is pending: Chromium was unavailable and its download failed in the initial environment.
 
 ## What runs now
-- C++20 core: explicit ENU/NED types, deterministic waypoint stepping, mission transition validation, independent safety checks.
-- Kinematic reference harness with nominal, low-battery, stale-telemetry and geofence regression cases.
+- Modular C++20 core: explicit ENU/NED types, independent safety supervisor, validated waypoint plans and a shared deterministic MissionController.
+- Kinematic harness using the same mission engine as ROS: nominal waypoints, low battery, stale telemetry, geofence, operator abort and command rejection.
 - React/TypeScript/Vite/Recharts read-only dashboard with trajectory, altitude history, source labels, stale detection and JSONL export.
 - Read-only WebSocket replay, plus ROS 2 live telemetry bridge source.
 - Offline synthetic health detection and route energy experiments with measured evaluation reports.
 
 ## PX4 integration source
-ROS 2 C++ node implements heartbeat warmup, mode/arming requests, command acknowledgments, bounded ascent,
-landing and completion from observed landed/disarmed state. Flight limits are ROS parameters.
+ROS 2 C++ node adapts PX4 messages to the shared core exported by the uav_core ament package. It supports heartbeat warmup, bounded requests, waypoint parameters, an abort service and completion from fresh landed/disarmed observations. Command acceptance never substitutes for observed state.
 Launch/runbook targets Ubuntu 22.04 + ROS 2 Humble + PX4 v1.16.0 + Gazebo Harmonic.
 This adapter has **not been compiled or flown in SITL in the initial environment**. ROS/PX4/Gazebo are absent.
 It must pass target-host acceptance before being called a working PX4 simulation MVP.
@@ -25,6 +24,20 @@ bash scripts/run_demo.sh
 python3 -m unittest discover -s tests/integration -v
 ```
 Full execution commands, expected output and blockers: [installation](docs/installation/setup.md).
+
+## Mission architecture and testing
+The ROS adapter and kinematic plant both consume `MissionController::tick()` decisions. Safety checks precede
+active flight decisions; cancellation is latched, and stale landing observations cannot produce successful completion.
+The default ROS configuration remains an ascent/land smoke test; `config/waypoint-mission.yaml` adds a short waypoint route.
+
+```bash
+# With libgtest-dev installed:
+cmake -S . -B build -DUAV_BUILD_GTEST=ON
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+See the [0.2 observed results](docs/testing/v0.2-results.md) for actual checks and remaining blockers.
 
 ## Engineering documentation
 - [Architecture and diagram](docs/architecture/architecture.md)
