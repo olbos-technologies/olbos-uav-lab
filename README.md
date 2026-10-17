@@ -10,8 +10,8 @@ The dashboard was checked in headless Chromium against harness replays (nominal 
 ## What runs now
 - Modular C++20 core: explicit ENU/NED types, independent safety supervisor, validated waypoint plans and a shared deterministic MissionController.
 - Kinematic harness using the same mission engine as ROS: nominal waypoints, low battery, stale telemetry, geofence, operator abort and command rejection.
-- Fault-injection safety suite: 17 scenarios (wind, battery, GPS loss/jump, estimator reset, motor failure, telemetry freeze/jitter, control-loop stall, abort, rejected/ignored commands, stuck land detector) checked by independent invariants, gated in CI and summarised as an HTML/Markdown safety report. See [fault scenarios](docs/testing/fault-scenarios.md).
-- React/TypeScript/Vite/Recharts read-only dashboard: mission phase timeline, waypoint progress, auto-zoom local trajectory or a geographic map view (local ENU telemetry drawn around a display origin; not GPS), altitude/battery charts, event log, stale detection, auto-reconnect, light/dark themes and JSONL export.
+- Fault-injection safety suite: 17 scenarios (wind, battery, GPS loss/jump, estimator reset, motor failure, telemetry freeze/jitter, control-loop stall, abort, rejected/ignored commands, stuck land detector) checked by independent invariants, plus envelope sweeps (wind, position jump, telemetry gap, loop stall) that chart where a mission stops completing. Runs against any node parameter file (`--config`), gated in CI and summarised as an HTML/Markdown safety report. See [fault scenarios](docs/testing/fault-scenarios.md).
+- React/TypeScript/Vite/Recharts read-only dashboard: mission phase timeline, waypoint progress, auto-zoom local trajectory or a geographic map view (local ENU telemetry drawn around a display origin; not GPS), altitude/battery charts, event log, stale detection, auto-reconnect, light/dark themes, JSONL export and in-browser replay of any trace file (**Open trace** or drag and drop, e.g. `artifacts/scenarios/traces/motor_failure.jsonl`).
 - Read-only WebSocket replay, plus ROS 2 live telemetry bridge source.
 - Offline synthetic health detection and route energy experiments with measured evaluation reports.
 
@@ -49,13 +49,14 @@ Run the bridge unit tests with `python3 -m unittest discover -s tests/integratio
 ## PX4 integration source
 ROS 2 C++ node adapts PX4 messages to the shared core exported by the uav_core ament package. It supports heartbeat warmup, bounded requests, waypoint parameters, an abort service and completion from fresh landed/disarmed observations. Command acceptance never substitutes for observed state.
 Launch/runbook targets Ubuntu 22.04 + ROS 2 Humble + PX4 v1.16.0 + Gazebo Harmonic.
-This adapter has **not been compiled or flown in SITL in the initial environment**. ROS/PX4/Gazebo are absent.
-It must pass target-host acceptance before being called a working PX4 simulation MVP.
+An automated PX4 SITL acceptance job (`.github/workflows/sitl.yml`, PX4's headless SIH quadrotor) flies smoke, waypoint and abort missions on CI and keeps ULogs as evidence; see [installation](docs/installation/setup.md#automated-sitl-acceptance-headless-ci). Gazebo runs remain manual.
+On CI it compiles, connects to PX4 v1.16 through the Micro XRCE-DDS agent and passes smoke, square-waypoint and operator-abort missions on PX4's SIH quadrotor, with landings confirmed by PX4's own land detector. Gazebo (`gz_x500`) runs and real-airframe tuning of the tracking monitor remain manual.
 
 ```bash
 bash scripts/test_core.sh
 bash scripts/run_demo.sh
 bash scripts/run_scenarios.sh   # writes artifacts/scenarios/safety-report.html
+bash scripts/run_scenarios.sh --config config/waypoint-mission.yaml --out artifacts/scenarios/waypoint-mission
 python3 -m unittest discover -s tests/integration -v
 ```
 Full execution commands, expected output and blockers: [installation](docs/installation/setup.md).

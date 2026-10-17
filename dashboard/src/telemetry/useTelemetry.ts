@@ -6,9 +6,10 @@ export type Link = 'connecting' | 'open' | 'closed';
 export type DemoCommand = 'start' | 'land' | 'abort' | 'inject_fault' | 'reset';
 
 const STALE_MS = 2000;
-const MAX_EVENTS = 60;
+export const MAX_EVENTS = 60;
 
-function changes(prev: Sample | undefined, next: Sample, nextId: () => number): TelemetryEvent[] {
+// Events implied by moving from one sample to the next; shared by live telemetry and file replay.
+export function changes(prev: Sample | undefined, next: Sample, nextId: () => number): TelemetryEvent[] {
   const out: TelemetryEvent[] = [];
   const add = (label: string, detail: string, tone: TelemetryEvent['tone']) =>
     out.push({ id: nextId(), time_s: next.time_s, label, detail, tone });

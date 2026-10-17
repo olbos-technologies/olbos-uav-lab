@@ -286,6 +286,66 @@ main {
   transition: width 0.3s ease;
 }
 
+/* Trace replay */
+.replay {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+}
+
+.replay-play {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 13px;
+  flex: none;
+}
+
+.replay-track {
+  flex: 1;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.replay-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+}
+
+.replay-meta b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-weight: 500;
+}
+
+.replay input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.replay-speed {
+  display: grid;
+  gap: 2px;
+  font-size: 11px;
+}
+
+.replay-speed select {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 4px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
 /* Mission timeline */
 .timeline {
   display: flex;
@@ -761,6 +821,8 @@ main {
   .steps .step-label { font-size: 10.5px; }
   .footer { flex-direction: column; }
   .geo-stage { height: 320px; }
+  .replay { flex-wrap: wrap; }
+  .replay-track { flex-basis: calc(100% - 56px); }
   .geo-origin-fields input { width: 115px; }
 }
 

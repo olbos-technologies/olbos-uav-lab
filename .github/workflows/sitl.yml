@@ -1,0 +1,115 @@
+name: px4-sitl
+# PX4 v1.16 SITL acceptance of the ROS 2 adapter: SIH quadrotor (no Gazebo), Micro XRCE-DDS agent,
+# smoke / waypoint / abort missions. Slow (first run ~40 min), so it only runs when the flight path changes.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ros2_ws/**
+      - core/include/**
+      - config/**
+      - scripts/sitl/**
+      - scripts/run_controller.sh
+      - scripts/sync_px4_messages.py
+      - .github/workflows/sitl.yml
+  pull_request:
+    paths:
+      - ros2_ws/**
+      - core/include/**
+      - config/**
+      - scripts/sitl/**
+      - scripts/run_controller.sh
+      - scripts/sync_px4_messages.py
+      - .github/workflows/sitl.yml
+permissions:
+  contents: read
+concurrency:
+  group: sitl-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  PX4_REF: v1.16.0
+  AGENT_REF: v2.4.3
+  PX4_DIR: /home/runner/PX4-Autopilot
+jobs:
+  sitl:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ROS 2 Humble
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common curl ccache
+          sudo add-apt-repository -y universe
+          sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu jammy main" \
+            | sudo tee /etc/apt/sources.list.d/ros2.list
+          sudo apt-get update
+          sudo apt-get install -y ros-humble-ros-base ros-dev-tools
+      - name: Fetch PX4
+        run: |
+          git clone --recursive --shallow-submodules --depth 1 --branch "$PX4_REF" https://github.com/PX4/PX4-Autopilot.git "$PX4_DIR"
+          # SITL does not use NuttX. A shallow NuttX checkout has no nuttx-x.y.z tags, which makes PX4's
+          # version-header script fail; without the checkout the script skips NuttX entirely.
+          git -C "$PX4_DIR" submodule deinit -f platforms/nuttx/NuttX/nuttx platforms/nuttx/NuttX/apps
+      - name: Install PX4 toolchain (no NuttX, no Gazebo)
+        run: bash "$PX4_DIR/Tools/setup/ubuntu.sh" --no-nuttx --no-sim-tools
+      # Caches are saved right after their build succeeds, so a later failing step does not discard them.
+      - uses: actions/cache/restore@v4
+        with:
+          path: ~/.ccache
+          key: px4-ccache-${{ env.PX4_REF }}-${{ github.run_id }}
+          restore-keys: px4-ccache-${{ env.PX4_REF }}-
+      - name: Build PX4 SITL
+        env:
+          CCACHE_DIR: /home/runner/.ccache
+        run: make -C "$PX4_DIR" px4_sitl_default
+      - uses: actions/cache/save@v4
+        with:
+          path: ~/.ccache
+          key: px4-ccache-${{ env.PX4_REF }}-${{ github.run_id }}
+      - id: agent-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/agent-install
+          key: xrce-agent-${{ env.AGENT_REF }}-jammy
+      - name: Build Micro XRCE-DDS agent
+        if: steps.agent-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch "$AGENT_REF" https://github.com/eProsima/Micro-XRCE-DDS-Agent.git /tmp/agent
+          cmake -S /tmp/agent -B /tmp/agent-build -DCMAKE_INSTALL_PREFIX="$HOME/agent-install"
+          cmake --build /tmp/agent-build -j"$(nproc)"
+          cmake --install /tmp/agent-build
+      - if: steps.agent-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/agent-install
+          key: xrce-agent-${{ env.AGENT_REF }}-jammy
+      - name: Put agent on PATH
+        run: |
+          echo "$HOME/agent-install/bin" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$HOME/agent-install/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+      - name: Build ROS workspace (px4_msgs synced from the PX4 checkout, uav_core, uav_controller)
+        run: |
+          source /opt/ros/humble/setup.bash
+          git clone --depth 1 --branch release/1.16 https://github.com/PX4/px4_msgs.git ros2_ws/src/px4_msgs
+          python3 scripts/sync_px4_messages.py "$PX4_DIR"
+          cd ros2_ws
+          colcon build --packages-up-to uav_controller --cmake-args -DCMAKE_BUILD_TYPE=Release
+      - name: Record resolved versions
+        if: always()
+        run: |
+          mkdir -p artifacts/sitl
+          { git -C "$PX4_DIR" rev-parse HEAD; cat config/resolved-sources.json 2>/dev/null;
+            dpkg-query -W 'ros-humble-*' 2>/dev/null; } > artifacts/sitl/versions.txt || true
+      - name: Fly acceptance missions
+        timeout-minutes: 25
+        run: bash scripts/sitl/ci_acceptance.sh artifacts/sitl
+      - name: Job summary
+        if: always()
+        run: cat artifacts/sitl/summary.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "No summary produced" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sitl-evidence
+          path: artifacts/sitl

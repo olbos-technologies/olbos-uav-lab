@@ -180,6 +180,23 @@ TEST(MissionController, TrackingErrorStopsStreaming) {
   EXPECT_FALSE(d.stream);
   EXPECT_EQ(d.state, uav::State::Landing);
 }
+TEST(MissionController, TakeoffLagDoesNotTripTrackingMonitor) {
+  // PX4 SITL: after arming, the takeoff ramp keeps the vehicle near the ground for seconds.
+  // The setpoint leash must hold the setpoint instead of running ahead into a TRACKING_ERROR.
+  Harness h;
+  uav::Decision d;
+  int lag = 0;
+  for (int i = 0; i < 1800 && d.outcome == uav::Outcome::Running; ++i) {
+    d = h.step();
+    if (d.state == uav::State::Takeoff && lag < 80) {
+      h.observation.telemetry.position = {0, 0, 0}; // 4 s of no climb
+      ++lag;
+    }
+  }
+  EXPECT_EQ(lag, 80);
+  EXPECT_EQ(d.outcome, uav::Outcome::Complete);
+  EXPECT_EQ(d.reason, "NORMAL");
+}
 TEST(MissionController, InvalidPositionPreemptsControl) {
   Harness h;
   h.airborne();

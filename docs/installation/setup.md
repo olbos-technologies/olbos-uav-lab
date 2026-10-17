@@ -78,6 +78,27 @@ Live read-only dashboard: source `/opt/ros/humble/setup.bash` and `ros2_ws/insta
 and run `python3 scripts/live_telemetry_ws.py`. Use the system Python/venv with access to rclpy and installed websockets.
 Do not run live and replay servers simultaneously; both use port 8765.
 
+## Automated SITL acceptance (headless, CI)
+`.github/workflows/sitl.yml` runs `scripts/sitl/ci_acceptance.sh` on GitHub's Ubuntu 22.04 runners whenever the flight path
+(ROS packages, core headers, configs, SITL scripts) changes, or on demand from the Actions tab. It builds PX4 v1.16.0
+`px4_sitl_default`, the Micro XRCE-DDS agent v2.4.3 and the ROS workspace (px4_msgs synced from the same PX4 checkout), then
+uses PX4's built-in **SIH** quadrotor (airframe 10040) instead of Gazebo, so no GPU or display is needed. SIH is a simple
+built-in physics model; the PX4 flight stack (estimator, commander, offboard, land detector, failsafes) is the real one.
+
+It applies the checklist parameters above through `px4-param` (plus `COM_RC_IN_MODE 4`, because CI has no RC or
+QGroundControl), restarts the DDS client on domain 42 and flies three missions, each from landed and disarmed:
+
+| Mission | Config | Expected |
+|---|---|---|
+| smoke | `config/controller.yaml` | `STATE COMPLETE outcome=1` |
+| waypoint | `config/waypoint-mission.yaml` | `STATE COMPLETE outcome=1` |
+| abort | waypoint route, `/sitl_mission/abort` called once NAVIGATION is logged | `outcome=2` (ABORTED_LANDED) |
+
+The job summary shows the result table; the `sitl-evidence` artifact holds controller logs, the PX4 console, agent log,
+parameters, ROS topic list, resolved versions and PX4 ULogs. To run the same script on your own Ubuntu 22.04 host after the
+setup above: `PX4_DIR="$PWD/.external/PX4-Autopilot" bash scripts/sitl/ci_acceptance.sh artifacts/sitl`.
+Gazebo (`gz_x500`) remains the interactive path for visual checks.
+
 ## Optional custom world
 `simulation/worlds/basic.sdf` can be checked with `gz sdf -k simulation/worlds/basic.sdf` on the target host.
 It is not the default PX4 world and has not been Gazebo-validated here. First establish flight in the shipped PX4 default world;
