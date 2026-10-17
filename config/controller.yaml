@@ -5,6 +5,13 @@ sitl_mission:
     max_speed: 2.0
     stale_seconds: 2.0
     min_battery: 0.2
+    # Seconds from node start; routes that cannot finish within these are rejected at startup.
+    mission_deadline: 90.0
+    leg_timeout: 30.0
+    # Abort when measured position stays this far (m) from the setpoint for longer than tracking_seconds.
+    # Defaults come from the kinematic fault suite; tune against SITL takeoff lag before relying on them.
+    tracking_limit: 3.0
+    tracking_seconds: 1.0
     takeoff_height: 5.0
     # Optional ENU navigation triples after vertical takeoff. Empty = smoke ascent/land.
     waypoints_enu: []

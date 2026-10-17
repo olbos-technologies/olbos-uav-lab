@@ -30,7 +30,7 @@ flowchart TD
 | PX4 adapter | ros2_ws/src/uav_controller | receipt timestamps, message conversion, request publication, ACK filtering, abort service |
 | Harness | core/demo.cpp | consumes the same decisions using a simple deterministic kinematic plant |
 | ML | machine_learning/training | synthetic health/anomaly/route experiments; no flight-command access |
-| Ground interface | dashboard + scripts/*telemetry_ws.py | source-labeled live/replay read-only snapshots and local charts |
+| Ground interface | dashboard + scripts/*telemetry_ws.py | source-labeled live/replay read-only snapshots, mission timeline, event log and local charts |
 
 The component headers are independent library modules, not six unnecessary concurrent ROS nodes. The named module
 folders under ros2_ws/src describe their mapping. Only uav_core and uav_controller are implemented ROS packages.
@@ -77,8 +77,11 @@ These are setpoint bounds, not measurements or guarantees of actual vehicle spee
 A timer gap over 0.5s stops streaming. Nonfinite/backward/repeated timestamps fail closed.
 No ML inference is executed in the timing-sensitive loop.
 
-Requests have three attempts, two seconds apart; commands require observed vehicle state even after accepted ACKs.
-Mission deadline is 90s, each leg is limited to 30s, landing verification to 40s. These deterministic defaults live in MissionConfig.
+Offboard/arm requests have three attempts, two seconds apart; Land is retried at the same interval until landing
+verification times out. Commands require observed vehicle state even after accepted ACKs.
+Mission deadline is 90s, each leg is limited to 30s, landing verification to 40s. These deterministic defaults live in MissionConfig;
+the ROS node exposes `mission_deadline` and `leg_timeout`. Plans whose nominal legs (1.5x distance/max speed) or total
+time cannot fit these bounds are rejected before flight.
 Timing exhaustion, rejected commands or faults stop heartbeats. Active abort/safety faults request PX4 Land;
 loss of the process/transport relies on the separately configured PX4 Land-on-offboard-loss action.
 Fallback landing is still subject to PX4 validity/estimation and requires actual SITL evidence.
@@ -92,3 +95,14 @@ Dashboard commands remain disabled. The ROS abort service reports only queued in
 Target-host ROS build/actual flight tests, estimator reset/source-timestamp handling, position-aware RTL,
 obstacle clearance, runtime ML worker/ONNX parity/timeout monitoring, and an acknowledged UI command gateway remain future work.
 ReturnToLaunch is an enum reservation only; no RTL execution is implemented. No real hardware support or aerospace certification is claimed.
+
+## Dashboard structure
+`dashboard/src` separates transport from presentation:
+- `telemetry/types.ts` defines the sample contract and copies only known, well-typed fields from each frame.
+- `telemetry/useTelemetry.ts` owns the WebSocket: bounded 600-sample window, 2 s staleness, exponential reconnect
+  (0.5 s to 10 s), a new session when the source clock restarts, and the derived state/waypoint/alert event log.
+- `telemetry/mission.ts` maps controller states, outcomes and alert codes to display phases and severities.
+- `components/` holds stateless views (timeline, metrics, trajectory, charts, safety, event log).
+The bridge URL defaults to `ws://127.0.0.1:8765`; `?ws=` may override it with another loopback address only.
+Mission phases appear only when a sample carries `state`/`outcome` (harness replay). The live bridge does not yet
+publish controller state, so the dashboard shows its raw PX4 nav_state instead of inferring a phase.

@@ -20,8 +20,10 @@ are unresolved and must be addressed before expanding autonomous missions.
 
 Replay JSON example:
 ```json
-{"source":"KINEMATIC_HARNESS","transport":"REPLAY","time_s":4.0,"east":0,"north":0,"altitude":5,"battery":0.9,"mode":"NAVIGATION","alert":"NORMAL"}
+{"source":"KINEMATIC_HARNESS","transport":"REPLAY","time_s":4.0,"east":0,"north":0,"altitude":5,"battery":0.9,"mode":"NAVIGATION","alert":"NORMAL","waypoint":1,"waypoints":4,"state":"NAVIGATION","outcome":"RUNNING"}
 ```
+`state` is the MissionController state and `outcome` one of RUNNING, COMPLETE, ABORTED_LANDED or FAILED; `mode` is kept
+for compatibility and collapses terminal outcomes. The replay bridge holds its final sample open rather than restarting.
 Live bridge uses `PX4_SITL_UNVERIFIED`: it cannot attest hardware identity. Nav mode is the raw PX4 enum;
 alert UNASSESSED means no C++ supervisor output is wired into this bridge yet. No artificial ML confidence is shown.
 Dashboard controls are disabled until a command gateway with IDs, expiry, allow-list, acknowledgments, and confirmed execution exists.

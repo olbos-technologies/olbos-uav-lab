@@ -63,7 +63,9 @@ int main(int argc, char **argv) {
               << ",\"north\":" << o.telemetry.position.north
               << ",\"altitude\":" << o.telemetry.position.up
               << ",\"battery\":" << o.telemetry.battery << ",\"mode\":\"" << mode
-              << "\",\"alert\":\"" << d.reason << "\",\"waypoint\":" << d.waypoint << "}\n";
+              << "\",\"alert\":\"" << d.reason << "\",\"waypoint\":" << d.waypoint
+              << ",\"waypoints\":" << controller.waypoint_count() << ",\"state\":\""
+              << uav::name(d.state) << "\",\"outcome\":\"" << uav::name(d.outcome) << "\"}\n";
     if (d.outcome != uav::Outcome::Running) {
       if (fault == "normal")
         return d.outcome == uav::Outcome::Complete ? 0 : 4;

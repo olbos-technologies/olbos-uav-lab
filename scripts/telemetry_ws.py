@@ -11,6 +11,8 @@ async def main(path, speed):
    await asyncio.wait_for(ws.send(json.dumps(row,allow_nan=False)),timeout=2)
    delay=max(0,min(1,(rows[min(i+1,len(rows)-1)]['time_s']-row['time_s'])/speed))
    await asyncio.sleep(delay)
+  # Hold the final sample; the dashboard reports it stale instead of restarting the replay.
+  await ws.wait_closed()
  async with serve(client,'127.0.0.1',8765,max_size=4096,max_queue=4,write_limit=4096):
   print('Read-only replay ws://127.0.0.1:8765',flush=True)
   await asyncio.Future()

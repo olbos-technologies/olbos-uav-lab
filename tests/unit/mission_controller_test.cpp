@@ -154,6 +154,32 @@ TEST(MissionController, StaleLandingCannotClaimCompletion) {
   EXPECT_EQ(d.outcome, uav::Outcome::Failed);
   EXPECT_EQ(d.reason, "LANDING_UNVERIFIED");
 }
+TEST(MissionController, IgnoredLandRequestRetriedUntilLandingTimeout) {
+  Harness h;
+  h.airborne();
+  h.observation.telemetry.battery = .1;
+  unsigned lands = 0;
+  uav::Decision d;
+  for (int i = 0; i < 1000 && d.outcome == uav::Outcome::Running; ++i) {
+    d = h.step(false);
+    if (d.request && *d.request == uav::Request::Land)
+      ++lands;
+  }
+  EXPECT_GT(lands, 3u);
+  EXPECT_EQ(d.outcome, uav::Outcome::Failed);
+  EXPECT_EQ(d.reason, "LANDING_UNVERIFIED");
+}
+TEST(MissionController, TrackingErrorStopsStreaming) {
+  Harness h;
+  h.airborne();
+  h.observation.telemetry.position.east += 4;
+  uav::Decision d;
+  for (int i = 0; i < 30 && d.reason == "NORMAL"; ++i)
+    d = h.step(false);
+  EXPECT_EQ(d.reason, "TRACKING_ERROR");
+  EXPECT_FALSE(d.stream);
+  EXPECT_EQ(d.state, uav::State::Landing);
+}
 TEST(MissionController, InvalidPositionPreemptsControl) {
   Harness h;
   h.airborne();
@@ -200,6 +226,19 @@ TEST(MissionController, UnsafePlanRejectedBeforeFlight) {
   EXPECT_THROW((uav::MissionController(c)), std::invalid_argument);
   c.waypoints = {{5, 0, 5}};
   EXPECT_THROW((uav::MissionController(c)), std::invalid_argument);
+}
+TEST(MissionController, InfeasiblePlanRejectedBeforeFlight) {
+  uav::MissionConfig c;
+  c.waypoints = {{0, 0, 5}, {35, 0, 5}, {-35, 0, 5}};
+  EXPECT_THROW((uav::MissionController(c)), std::invalid_argument);
+  c.waypoints = {{0, 0, 5}};
+  for (int i = 0; i < 6; ++i) {
+    c.waypoints.push_back({20, 0, 5});
+    c.waypoints.push_back({-20, 0, 5});
+  }
+  EXPECT_THROW((uav::MissionController(c)), std::invalid_argument);
+  c.deadline = 400;
+  EXPECT_NO_THROW((uav::MissionController(c)));
 }
 TEST(MissionController, SetpointSpeedIsBounded) {
   Harness h;

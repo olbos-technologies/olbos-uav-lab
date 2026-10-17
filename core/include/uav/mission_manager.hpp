@@ -14,6 +14,33 @@ enum class State {
   ReturnToLaunch,
   CommunicationLoss
 };
+inline std::string_view name(State s) {
+  switch (s) {
+  case State::Idle:
+    return "IDLE";
+  case State::PreFlight:
+    return "PRE_FLIGHT_CHECK";
+  case State::Ready:
+    return "READY";
+  case State::Takeoff:
+    return "TAKEOFF";
+  case State::Navigation:
+    return "NAVIGATION";
+  case State::Landing:
+    return "LANDING";
+  case State::Complete:
+    return "COMPLETE";
+  case State::Abort:
+    return "ABORT";
+  case State::Emergency:
+    return "EMERGENCY";
+  case State::ReturnToLaunch:
+    return "RETURN_TO_LAUNCH";
+  case State::CommunicationLoss:
+    return "COMMUNICATION_LOSS";
+  }
+  return "UNKNOWN";
+}
 class MissionManager {
   State state_ = State::Idle;
 

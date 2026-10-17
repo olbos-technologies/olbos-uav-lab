@@ -8,9 +8,10 @@ class HarnessTests(unittest.TestCase):
   self.assertTrue(all(r['source']=='KINEMATIC_HARNESS' for r in rows))
   self.assertTrue(all(-.01<=r['altitude']<=5.01 for r in rows))
   self.assertLess(rows[-1]['altitude'],.01)
+  self.assertTrue(all(r['waypoints']==4 and r['outcome'] in ('RUNNING','COMPLETE','ABORTED_LANDED','FAILED') for r in rows))
   return rows
  def test_nominal(self):
-  rows=self.run_scenario('normal');self.assertEqual(rows[-1]['mode'],'COMPLETE');self.assertEqual(rows[-1]['waypoint'],4)
+  rows=self.run_scenario('normal');self.assertEqual(rows[-1]['mode'],'COMPLETE');self.assertEqual(rows[-1]['outcome'],'COMPLETE');self.assertEqual(rows[-1]['waypoint'],4)
  def test_battery(self):
   rows=self.run_scenario('battery');self.assertEqual(rows[-1]['mode'],'ABORTED');self.assertIn('LOW_BATTERY',[r['alert'] for r in rows])
  def test_stale(self):

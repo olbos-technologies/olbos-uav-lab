@@ -18,8 +18,15 @@ jobs:
           name: cpp-test-results
           path: build/ctest-results.xml
       - run: python3 -m pip install websockets==15.0.1 clang-format==19.1.7
-      - run: clang-format --dry-run --Werror core/include/uav/*.hpp core/demo.cpp tests/unit/*.cpp ros2_ws/src/uav_controller/src/sitl_mission.cpp
+      - run: clang-format --dry-run --Werror core/include/uav/*.hpp core/*.cpp tests/unit/*.cpp ros2_ws/src/uav_controller/src/sitl_mission.cpp
       - run: bash scripts/run_demo.sh && python3 -m unittest discover -s tests/integration -v
+      - name: Fault-injection safety report
+        run: bash scripts/run_scenarios.sh && cat artifacts/scenarios/safety-report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: safety-report
+          path: artifacts/scenarios
   dashboard:
     runs-on: ubuntu-22.04
     steps:

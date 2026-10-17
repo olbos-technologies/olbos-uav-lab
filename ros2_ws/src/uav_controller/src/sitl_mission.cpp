@@ -111,6 +111,10 @@ public:
     config.limits.max_speed = declare_parameter("max_speed", 2.0);
     config.limits.stale_seconds = declare_parameter("stale_seconds", 2.0);
     config.limits.min_battery = declare_parameter("min_battery", .2);
+    config.deadline = declare_parameter("mission_deadline", 90.0);
+    config.leg_timeout = declare_parameter("leg_timeout", 30.0);
+    config.tracking_limit = declare_parameter("tracking_limit", 3.0);
+    config.tracking_seconds = declare_parameter("tracking_seconds", 1.0);
     const auto height = declare_parameter("takeoff_height", 5.0);
     const auto route =
         declare_parameter<std::vector<double>>("waypoints_enu", std::vector<double>{});
