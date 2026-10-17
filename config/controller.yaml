@@ -13,5 +13,6 @@ sitl_mission:
     tracking_limit: 3.0
     tracking_seconds: 1.0
     takeoff_height: 5.0
-    # Optional ENU navigation triples after vertical takeoff. Empty = smoke ascent/land.
-    waypoints_enu: []
+    # Optional ENU navigation triples after vertical takeoff; omitted = smoke ascent/land.
+    # (rcl's YAML parser rejects an empty list, so leave the key out rather than writing [].)
+    # waypoints_enu: [east, north, up, ...]
