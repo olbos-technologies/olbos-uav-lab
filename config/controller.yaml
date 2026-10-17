@@ -6,3 +6,5 @@ sitl_mission:
     stale_seconds: 2.0
     min_battery: 0.2
     takeoff_height: 5.0
+    # Optional ENU navigation triples after vertical takeoff. Empty = smoke ascent/land.
+    waypoints_enu: []

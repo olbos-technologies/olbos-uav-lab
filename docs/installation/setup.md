@@ -7,8 +7,15 @@ bash scripts/test_core.sh
 bash scripts/run_demo.sh
 python3 -m unittest discover -s tests/integration -v
 ```
-Expected: 25 checks pass; four harness tests pass. `artifacts/flight.jsonl` contains kinematic data, not PX4 telemetry.
-Or use `cmake -S . -B build && cmake --build build && ctest --test-dir build --output-on-failure`.
+Expected: 25 checks pass; seven Python integration tests pass (six harness scenarios plus replay). `artifacts/flight.jsonl` contains kinematic data, not PX4 telemetry.
+For the GoogleTest mission suite (install libgtest-dev on Ubuntu):
+```bash
+cmake -S . -B build -DUAV_BUILD_GTEST=ON
+cmake --build build
+ctest --test-dir build --output-on-failure --output-junit ctest-results.xml
+```
+Expected: 17 CTest cases pass (16 GoogleTests and the 25-check core contract executable).
+The optional GoogleTest flag is off by default for a minimal dependency-free core build; CI enables it.
 
 Use a Python virtual environment:
 ```bash
@@ -54,7 +61,7 @@ cd ros2_ws
 colcon build --packages-up-to uav_controller
 cd ..
 ```
-Expected: px4_msgs and uav_controller build. Message generation/schema compatibility remains unverified here.
+Expected: px4_msgs, uav_core and uav_controller build. Message generation/schema compatibility remains unverified here.
 
 Run terminals on an isolated VM/network with no physical autopilot devices, and set `ROS_DOMAIN_ID=42 ROS_LOCALHOST_ONLY=1` in every ROS terminal.
 Start agent: `MicroXRCEAgent udp4 -p 8888`. Agent UDP may listen on all interfaces; VM/firewall isolation is required.
@@ -62,7 +69,7 @@ Start simulator: `PX4_DIR="$PWD/.external/PX4-Autopilot" bash scripts/launch_sit
 Use the PX4 shell checklist in `px4/configuration/sitl-checklist.md`, including DDS domain and Land-on-loss settings.
 Keep QGroundControl connected. Inspect `ros2 topic list` and `ros2 topic hz` for position/status/battery/land topics before commanding.
 Then `bash scripts/run_controller.sh`.
-Expected (not observed here): REQUEST/ACK logs, climb to 5 m, LAND, `COMPLETE observed landed and disarmed`.
+Expected (not observed here): REQUEST/ACK logs, climb to 5 m, Land request, then `STATE COMPLETE outcome=1` only after fresh landed/disarmed observations.
 If telemetry is unavailable, no arm request should be sent and the node faults at its 90 second deadline.
 The process remains running after Complete/Fault for inspection; Ctrl+C exits. Emergency stops rely on configured PX4 failsafes.
 Capture PX4 ULog and controller stdout as acceptance evidence. Never report COMPLETE from ACK alone.
@@ -75,3 +82,15 @@ Do not run live and replay servers simultaneously; both use port 8765.
 `simulation/worlds/basic.sdf` can be checked with `gz sdf -k simulation/worlds/basic.sdf` on the target host.
 It is not the default PX4 world and has not been Gazebo-validated here. First establish flight in the shipped PX4 default world;
 then add the custom world through PX4's documented GZ_SIM_RESOURCE_PATH/PX4_GZ_WORLD mechanism.
+
+## Shared controller waypoint and abort commands
+After the smoke mission passes on the isolated SITL target, run the same engine with the square route:
+```bash
+bash scripts/run_controller.sh config/waypoint-mission.yaml
+```
+From a ROS terminal with the same domain, abort an active mission:
+```bash
+ros2 service call /sitl_mission/abort std_srvs/srv/Trigger '{}'
+```
+Expected service response: abort queued, PX4 landing unconfirmed. Observe subsequent controller state and PX4 ULog.
+These ROS commands are source/runbook deliverables; they have not been executed in the current environment.

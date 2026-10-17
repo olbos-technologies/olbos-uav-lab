@@ -1,4 +1,4 @@
-# Interfaces
+# Olbos UAV Lab interface contracts
 
 | Producer → Consumer | Contract | Units / frame | Failure treatment |
 |---|---|---|---|
@@ -25,3 +25,16 @@ Replay JSON example:
 Live bridge uses `PX4_SITL_UNVERIFIED`: it cannot attest hardware identity. Nav mode is the raw PX4 enum;
 alert UNASSESSED means no C++ supervisor output is wired into this bridge yet. No artificial ML confidence is shown.
 Dashboard controls are disabled until a command gateway with IDs, expiry, allow-list, acknowledgments, and confirmed execution exists.
+
+## Shared control contract (0.2)
+`MissionController` owns the same state machine for the ROS adapter and harness. It consumes a local
+elapsed monotonic timestamp, a consolidated Telemetry receipt age and explicit armed/offboard/landing/landed flags.
+Adapter startup must define elapsed time zero; the mission deadline is measured from that origin.
+The next tick after `request_abort()` stops offboard streaming and requests Land if the mission has observed arming.
+The service `/sitl_mission/abort` uses std_srvs/srv/Trigger. Its `success=true` means cancellation was queued,
+not that PX4 accepted Land or that landing completed. PX4 ACKs are filtered by destination system 1/component 191
+and the pending request type; request-attempt-level correlation is not implemented.
+
+`waypoints_enu` is a flattened list of east/north/up triples following the vertical takeoff waypoint.
+Empty means ascent/land smoke test; at most 63 extra waypoints are accepted. Each point must satisfy the deterministic
+geofence and altitude checks before construction. No learned route can replace this plan in 0.2.

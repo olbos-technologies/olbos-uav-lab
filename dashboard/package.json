@@ -1,5 +1,5 @@
 {
- "name":"olbos-uav-lab-dashboard","version":"0.1.0","private":true,"type":"module","description":"Autonomous UAV simulation and machine-learning research platform built with C++20, PX4, ROS 2, and Gazebo.",
+ "name":"olbos-uav-lab-dashboard","version":"0.2.0","private":true,"type":"module","description":"Autonomous UAV simulation and machine-learning research platform built with C++20, PX4, ROS 2, and Gazebo.",
  "scripts":{"dev":"vite --host 127.0.0.1","build":"tsc --noEmit && vite build"},
  "dependencies":{"react":"19.1.1","react-dom":"19.1.1","recharts":"3.2.1"},
  "devDependencies":{"typescript":"5.9.2","vite":"7.1.7","@types/react":"19.1.13","@types/react-dom":"19.1.9"}
