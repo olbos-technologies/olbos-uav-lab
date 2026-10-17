@@ -484,6 +484,150 @@ main {
   font-size: 13px;
 }
 
+/* Trajectory view toggle */
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.segmented button {
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+  border-radius: 6px;
+}
+
+.segmented button.on {
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.map-scale {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 11.5px;
+}
+
+/* Geographic map */
+.geo-stage {
+  position: relative;
+  height: 460px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  touch-action: none;
+  cursor: grab;
+}
+
+.geo-stage:active { cursor: grabbing; }
+
+.geo-tile {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+  max-width: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+:root[data-theme='dark'] .geo-tile {
+  filter: brightness(0.82) saturate(0.85);
+}
+
+.geo-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.geo-fence { fill: color-mix(in srgb, var(--warn) 8%, transparent); stroke: var(--warn); stroke-width: 2; stroke-dasharray: 7 6; }
+.geo-origin { stroke: var(--text); stroke-width: 2; }
+.geo-route { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6)); }
+.geo-vehicle { fill: var(--ok); stroke: #fff; stroke-width: 2.5; }
+.geo-overlay .pulse { fill: var(--ok); opacity: 0.2; animation: pulse 2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.geo-label { font: 600 12px var(--mono); fill: #0f1d2b; paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
+.geo-empty { background: color-mix(in srgb, var(--surface) 55%, transparent); }
+
+.geo-controls {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.geo-controls button {
+  background: var(--surface);
+  min-width: 32px;
+  padding: 5px 10px;
+}
+
+.geo-attribution {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #1c3548;
+  font-size: 10.5px;
+  text-decoration: none;
+}
+
+.geo-footer {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.geo-origin-fields {
+  display: flex;
+  gap: 10px;
+}
+
+.geo-origin-fields label {
+  display: grid;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.geo-origin-fields input {
+  width: 130px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: 12.5px var(--mono);
+}
+
+.geo-origin-fields label.invalid input {
+  border-color: var(--critical);
+}
+
+.geo-disclaimer {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--warn);
+}
+
 /* Safety */
 .safety .panel-head .status-dot { --tone: inherit; }
 .safety-headline {
@@ -586,11 +730,13 @@ main {
   .topbar { flex-direction: column; align-items: flex-start; }
   .topbar-actions { justify-content: flex-start; }
   .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .metric-value { font-size: 21px; }
+  .metric-value { font-size: 18px; }
   .metric-value .mode { font-size: 17px; }
   .charts { grid-template-columns: 1fr; }
   .steps .step-label { font-size: 10.5px; }
   .footer { flex-direction: column; }
+  .geo-stage { height: 320px; }
+  .geo-origin-fields input { width: 115px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

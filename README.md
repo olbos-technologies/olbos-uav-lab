@@ -11,9 +11,12 @@ The dashboard was checked in headless Chromium against harness replays (nominal 
 - Modular C++20 core: explicit ENU/NED types, independent safety supervisor, validated waypoint plans and a shared deterministic MissionController.
 - Kinematic harness using the same mission engine as ROS: nominal waypoints, low battery, stale telemetry, geofence, operator abort and command rejection.
 - Fault-injection safety suite: 17 scenarios (wind, battery, GPS loss/jump, estimator reset, motor failure, telemetry freeze/jitter, control-loop stall, abort, rejected/ignored commands, stuck land detector) checked by independent invariants, gated in CI and summarised as an HTML/Markdown safety report. See [fault scenarios](docs/testing/fault-scenarios.md).
-- React/TypeScript/Vite/Recharts read-only dashboard: mission phase timeline, waypoint progress, auto-zoom trajectory, altitude/battery charts, event log, stale detection, auto-reconnect, light/dark themes and JSONL export.
+- React/TypeScript/Vite/Recharts read-only dashboard: mission phase timeline, waypoint progress, auto-zoom local trajectory or a geographic map view (local ENU telemetry drawn around a display origin; not GPS), altitude/battery charts, event log, stale detection, auto-reconnect, light/dark themes and JSONL export.
 - Read-only WebSocket replay, plus ROS 2 live telemetry bridge source.
 - Offline synthetic health detection and route energy experiments with measured evaluation reports.
+
+## Geographic map display
+The trajectory panel's **Map** toggle draws local telemetry over OpenStreetMap tiles around an editable display origin (default: a generic Tulsa map center; your choice is remembered in the browser). The default **Local** view needs no network access; tiles are only requested while Map is selected. This visualizes local east/north offsets; it is **not GPS**, a real position fix, or a navigation aid. The map remains read-only. Configure another compatible XYZ raster tile endpoint with `VITE_MAP_TILE_URL`; see `dashboard/.env.example`. The OpenStreetMap Foundation tile service is best-effort and used here for low-volume development; use a dedicated provider for a public or production service, retain visible attribution, and follow the provider's terms.
 
 ## PX4 integration source
 ROS 2 C++ node adapts PX4 messages to the shared core exported by the uav_core ament package. It supports heartbeat warmup, bounded requests, waypoint parameters, an abort service and completion from fresh landed/disarmed observations. Command acceptance never substitutes for observed state.

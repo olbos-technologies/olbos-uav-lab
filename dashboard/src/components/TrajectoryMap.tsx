@@ -1,16 +1,60 @@
+import { useState } from 'react';
 import type { Sample } from '../telemetry/types';
+import { GeoMap } from './GeoMap';
 
 const GEOFENCE_M = 40;
-const EXTENTS = [15, 25, 45];
+const EXTENTS = [15, 25, 45, 90];
+const VIEW_KEY = 'olbos-trajectory-view';
+type View = 'local' | 'map';
 
+function storedView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'map' ? 'map' : 'local';
+  } catch {
+    return 'local';
+  }
+}
+
+// Local view works offline; the map view fetches tiles from the configured provider on demand.
 export function TrajectoryMap({ rows, latest }: { rows: Sample[]; latest?: Sample }) {
+  const [view, setView] = useState<View>(storedView);
+  const choose = (v: View) => {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* storage unavailable: choice lasts for this session */
+    }
+  };
+  return (
+    <article className="panel map">
+      <header className="panel-head">
+        <h2>Trajectory</h2>
+        <div className="segmented" role="group" aria-label="Trajectory view">
+          <button className={view === 'local' ? 'on' : ''} aria-pressed={view === 'local'} onClick={() => choose('local')}>
+            Local
+          </button>
+          <button className={view === 'map' ? 'on' : ''} aria-pressed={view === 'map'} onClick={() => choose('map')}>
+            Map
+          </button>
+        </div>
+      </header>
+      {view === 'map' ? <GeoMap rows={rows} latest={latest} fence={GEOFENCE_M} /> : <LocalView rows={rows} latest={latest} />}
+      <footer className="panel-foot">
+        Telemetry trace · last {rows.length} samples · {GEOFENCE_M} m fence · no physics rendered
+      </footer>
+    </article>
+  );
+}
+
+function LocalView({ rows, latest }: { rows: Sample[]; latest?: Sample }) {
   const points = rows.filter(
     (r): r is Sample & { east: number; north: number } => r.east !== undefined && r.north !== undefined,
   );
   // Auto-zoom to the flown area so short routes stay legible; never crop the trace.
   const reach = points.reduce((m, p) => Math.max(m, Math.abs(p.east), Math.abs(p.north)), 0);
   const extent = EXTENTS.find((e) => reach * 1.2 <= e) ?? EXTENTS.at(-1)!;
-  const step = extent <= 15 ? 2.5 : extent <= 25 ? 5 : 10;
+  const step = extent <= 15 ? 2.5 : extent <= 25 ? 5 : extent <= 45 ? 10 : 20;
   const ticks: number[] = [];
   for (let v = -Math.floor(extent / step) * step; v <= extent; v += step) ticks.push(v);
   const trail = points.map((p) => `${p.east.toFixed(2)},${(-p.north).toFixed(2)}`).join(' ');
@@ -18,12 +62,8 @@ export function TrajectoryMap({ rows, latest }: { rows: Sample[]; latest?: Sampl
   const start = points[0];
   const s = extent / 45;
   return (
-    <article className="panel map">
-      <header className="panel-head">
-        <h2>Local trajectory</h2>
-        <span className="muted">ENU · ±{extent} m view · {GEOFENCE_M} m fence</span>
-      </header>
-      <div className="map-frame">
+    <div className="map-frame">
+        <span className="map-scale muted">ENU · ±{extent} m</span>
         <svg viewBox={`${-extent} ${-extent} ${extent * 2} ${extent * 2}`} role="img" aria-label="Local flight trajectory, east right, north up">
           {ticks.map((t) => (
             <g key={t} className={t === 0 ? 'axis' : 'gridline'}>
@@ -51,8 +91,6 @@ export function TrajectoryMap({ rows, latest }: { rows: Sample[]; latest?: Sampl
           )}
         </svg>
         {!points.length && <div className="map-empty">Awaiting position telemetry</div>}
-      </div>
-      <footer className="panel-foot">2D telemetry trace · last {rows.length} samples · no physics rendered</footer>
-    </article>
+    </div>
   );
 }
