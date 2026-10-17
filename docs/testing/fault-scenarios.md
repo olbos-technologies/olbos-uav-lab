@@ -33,8 +33,8 @@ home against fault size, with a table view.
 
 | Sweep | Range | Built-in route result |
 |---|---|---|
-| steady wind | 0–20 m/s | completes up to 6 m/s (8 m/s airspeed minus 2 m/s mission speed); above, LEG_TIMEOUT/TRACKING_ERROR; drift reaches 52 m at 20 m/s |
-| position jump | 0–10 m | up to 7.5 m completes **undetected** with the airframe displaced by the jump; larger jumps trip TRACKING_ERROR while the autopilot catches up |
+| steady wind | 0–20 m/s | completes up to 7 m/s (upwind legs slow down; the leash keeps the setpoint with the vehicle); at the 8 m/s airspeed, LEG_TIMEOUT; above, TRACKING_ERROR within ~3.5–6 s; drift reaches 21 m at 20 m/s |
+| position jump | 0–10 m | up to 8 m completes **undetected** with the airframe displaced by the jump; larger jumps trip TRACKING_ERROR while the autopilot catches up |
 | telemetry gap | 0–3 s | completes up to 0.75 s; from the 1 s stale limit, STALE_TELEMETRY |
 | control-loop stall | 0–1.5 s | completes up to 0.4 s; from 0.5 s, CONTROL_LOOP_STALL |
 
@@ -89,3 +89,10 @@ Times below are for the built-in square route, where the probe places faults at 
 | land_detector_stuck | touchdown never reported | LANDING_UNVERIFIED, never COMPLETE |
 
 To add a scenario, append it to `catalog()` with its `Faults` and `Expectation`; it automatically joins the CLI, CI and GoogleTest.
+
+## Setpoint leash (from PX4 SITL)
+The first PX4 SITL runs aborted every mission with TRACKING_ERROR about 2.5 s into takeoff: PX4 ramps its takeoff, so
+the vehicle lagged the controller's 2 m/s climbing setpoint by more than the 3 m tracking limit. The controller now only
+advances the setpoint while the measured position is within half the tracking limit of it. Autopilot lag can no longer
+open a tracking error, while a vehicle that is pushed away or falls still separates from the held setpoint and is caught.
+`TakeoffLagDoesNotTripTrackingMonitor` reproduces the SITL case in the unit tests.

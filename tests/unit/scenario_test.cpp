@@ -32,12 +32,13 @@ TEST(FaultScenario, SweepsNeverBreakSafetyInvariants) {
                             << c.detail;
 }
 
-TEST(FaultScenario, WindEnvelopeMatchesAirspeedMargin) {
-  // 8 m/s airspeed minus the 2 m/s mission speed: upwind legs stop keeping pace above 6 m/s.
+TEST(FaultScenario, WindEnvelopeIsAirspeedLimited) {
+  // With the setpoint leash, upwind legs just slow down; the mission completes while the
+  // wind stays below the plant's 8 m/s airspeed and stops once the airframe cannot make headway.
   auto wind = uav::sim::sweeps()[0];
   ASSERT_EQ(wind.name, "wind");
   for (size_t i = 0; i < wind.values.size(); ++i)
-    EXPECT_EQ(wind.results[i].outcome == uav::Outcome::Complete, wind.values[i] <= 6)
+    EXPECT_EQ(wind.results[i].outcome == uav::Outcome::Complete, wind.values[i] < 8)
         << wind.values[i] << " m/s";
 }
 

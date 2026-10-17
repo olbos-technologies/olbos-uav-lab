@@ -99,9 +99,9 @@ stop_controller() { # SIGINT, then SIGKILL; never wait unbounded
   wait "$pid" 2>/dev/null || true
 }
 
-fly() { # fly <name> <config> <expected outcome> [state that triggers ~/abort]
-  local name=$1 config=$2 expect=$3 abort_in=${4:-} log="$OUT/$1.log" aborted=0 code="" note=""
-  echo "== Mission $name ($config), expecting $expect"
+fly() { # fly <name> <config> <expected outcome> <expected reason> [state that triggers ~/abort]
+  local name=$1 config=$2 expect=$3 want_reason=$4 abort_in=${5:-} log="$OUT/$1.log" aborted=0 code="" note=""
+  echo "== Mission $name ($config), expecting $expect / $want_reason"
   if ! wait_for 60 "vehicle landed and disarmed before $name" vehicle_disarmed; then
     note="vehicle not disarmed beforehand"
   fi
@@ -122,26 +122,29 @@ fly() { # fly <name> <config> <expected outcome> [state that triggers ~/abort]
   local got=${outcome_name[${code:-0}]:-NO_TERMINAL_OUTCOME}
   local reason
   reason=$(grep -o 'reason=[A-Z_]*' "$log" | tail -1 | cut -d= -f2 || true)
+  # The reason matters as much as the outcome: an abort mission that ends on TRACKING_ERROR did not test the abort.
+  local ok=0
+  [[ $got == "$expect" && ${reason:-NORMAL} == "$want_reason" ]] && ok=1
   [[ -n $note ]] && reason="${reason:-—} ($note)"
-  if [[ $got == "$expect" ]]; then
-    results+=("| $name | $expect | $got | ${reason:-—} | PASS |")
+  if ((ok)); then
+    results+=("| $name | $expect / $want_reason | $got / ${reason:-—} | PASS |")
   else
-    results+=("| $name | $expect | $got | ${reason:-—} | **FAIL** |")
+    results+=("| $name | $expect / $want_reason | $got / ${reason:-—} | **FAIL** |")
     failed=1
   fi
-  echo "   result: $got (expected $expect), last reason ${reason:-—}"
+  echo "   result: $got / ${reason:-—} (expected $expect / $want_reason)"
   grep -E "STATE|REQUEST|ACK|rror|xception" "$log" | tail -40 || true
 }
 
-fly smoke config/controller.yaml COMPLETE
-fly waypoint config/waypoint-mission.yaml COMPLETE
-fly abort config/waypoint-mission.yaml ABORTED_LANDED NAVIGATION
+fly smoke config/controller.yaml COMPLETE NORMAL
+fly waypoint config/waypoint-mission.yaml COMPLETE NORMAL
+fly abort config/waypoint-mission.yaml ABORTED_LANDED OPERATOR_ABORT NAVIGATION
 
 {
   echo "## PX4 SITL acceptance (SIH quadrotor, PX4 $(git -C "$PX4_DIR" describe --tags 2>/dev/null || echo unknown))"
   echo
-  echo "| Mission | Expected | Observed | Last reason | Result |"
-  echo "|---|---|---|---|---|"
+  echo "| Mission | Expected outcome / reason | Observed outcome / reason | Result |"
+  echo "|---|---|---|---|"
   printf '%s\n' "${results[@]}"
   echo
   echo "Controller logs, PX4 console, agent log and ULogs are in the sitl-evidence artifact."

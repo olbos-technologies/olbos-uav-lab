@@ -193,7 +193,11 @@ class MissionController {
       tracking_since_ = -1;
     }
     auto target = config_.waypoints[waypoint_];
-    setpoint_ = step_toward(setpoint_, target, dt, config_.limits.max_speed);
+    // Carrot on a leash: advance only while the vehicle keeps up, so autopilot lag (PX4's
+    // takeoff ramp, found in SITL) cannot open a tracking error. A vehicle pushed away or
+    // falling still separates from the held setpoint and trips the monitor.
+    if (distance(o.telemetry.position, setpoint_) <= config_.tracking_limit / 2)
+      setpoint_ = step_toward(setpoint_, target, dt, config_.limits.max_speed);
     if (safety_.command(setpoint_) != Fault::None)
       return abort_in_flight("INVALID_COMMAND", now, o);
     if (distance(o.telemetry.position, target) < config_.limits.arrival_radius &&
