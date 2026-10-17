@@ -79,7 +79,10 @@ export default function GeoMap({samples}:Props){
   const radiusPx=40/metersPerPixel;
   const updateOrigin=(key:keyof Origin,value:string)=>{
     const numeric=Number(value);
-    if(Number.isFinite(numeric))setOrigin(old=>({...old,[key]:numeric}));
+    if(Number.isFinite(numeric)){
+      const bounded=key==='lat'?Math.max(-85,Math.min(85,numeric)):Math.max(-180,Math.min(180,numeric));
+      setOrigin(old=>({...old,[key]:bounded}));
+    }
   };
   const startDrag=(event:React.PointerEvent<HTMLDivElement>)=>{
     if(event.button!==0)return;
@@ -99,7 +102,7 @@ export default function GeoMap({samples}:Props){
     </div>
     <div className="geo-map-stage" ref={viewport}
       onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}
-      role="img" aria-label="Map with a local telemetry route drawn around the selected display origin">
+      role="region" aria-label="Interactive map with a local telemetry route drawn around the selected display origin">
       <div className="geo-map-tiles">{visibleTiles.map((tile,i)=><MapTile key={`${zoom}/${tile.x}/${tile.y}/${i}`} {...tile} zoom={zoom}/>)}</div>
       <svg className="geo-map-overlay" aria-hidden="true">
         <circle className="geo-map-fence" cx={size.width/2+pan.x} cy={size.height/2+pan.y} r={radiusPx}/>
