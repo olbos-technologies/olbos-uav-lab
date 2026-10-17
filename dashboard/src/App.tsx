@@ -33,8 +33,9 @@ export function App() {
   const [trace, setTrace] = useState<Trace | null>(null);
   const [fileError, setFileError] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
-  // The live socket is closed while a trace file is replayed.
-  const live = useTelemetry(url, 600, !trace);
+  // The live connection stays open during replay: the local simulation demo keeps one session per
+  // connection, so closing it would discard the user's demo flight. Only the display follows the trace.
+  const live = useTelemetry(url);
   const replay = useReplay(trace);
   const { rows, events, latest: d, stale } = replay ?? live;
   const theme = useTheme();
@@ -116,7 +117,13 @@ export function App() {
         <span>
           {replay ? 'File' : 'Bridge'} <b>{replay ? trace!.name : url}</b>
         </span>
-        <span>Read-only monitoring</span>
+        <span>
+          {replay
+            ? 'Replay of a recorded trace · no live connection'
+            : d?.source === 'SIMULATION_DEMO'
+              ? 'Interactive local simulation only · no PX4 connection'
+              : 'Read-only monitoring'}
+        </span>
         {error && <span className="tone-warn">{error}</span>}
       </div>
 
@@ -159,7 +166,14 @@ export function App() {
         <section className="main-grid">
           <TrajectoryMap rows={rows} latest={d} />
           <div className="side">
-            <SafetyPanel latest={d} stale={stale} />
+            <SafetyPanel
+              latest={d}
+              stale={stale}
+              sendCommand={live.sendCommand}
+              // Demo commands are disabled during replay so a click never acts on a hidden live session.
+              commandPending={!!replay || live.commandPending}
+              commandStatus={replay ? '' : live.commandStatus}
+            />
             <EventLog events={events} />
           </div>
         </section>

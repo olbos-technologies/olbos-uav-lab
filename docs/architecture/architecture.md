@@ -89,7 +89,7 @@ Fallback landing is still subject to PX4 validity/estimation and requires actual
 ROS queues are bounded (sensor depth 5, publication depth 10). WebSocket bridges run separately with bounded queues,
 2s send deadlines and a latest-snapshot lock; UI retains 600 samples. Replay currently loads its whole input file.
 Mission parameters come from controller.yaml; a separate waypoint-mission.yaml enables the short square mission.
-Dashboard commands remain disabled. The ROS abort service reports only queued intent, not a PX4 acknowledgment or a confirmed landing.
+The dashboard's loopback simulation demo has its own in-memory mission state and synthetic advisory output. Its commands do not reach the shared C++ controller, ROS, PX4, or a vehicle. The production/PX4 dashboard command gateway remains unimplemented. The ROS abort service reports only queued intent, not a PX4 acknowledgment or a confirmed landing.
 
 ## Remaining architecture work
 Target-host ROS build/actual flight tests, estimator reset/source-timestamp handling, position-aware RTL,
@@ -102,8 +102,9 @@ ReturnToLaunch is an enum reservation only; no RTL execution is implemented. No 
 - `telemetry/useTelemetry.ts` owns the WebSocket: bounded 600-sample window, 2 s staleness, exponential reconnect
   (0.5 s to 10 s), a new session when the source clock restarts, and the derived state/waypoint/alert event log.
 - `telemetry/mission.ts` maps controller states, outcomes and alert codes to display phases and severities.
-- `telemetry/useReplay.ts` replays a JSONL trace file on its own clock (play/pause, 0.5–10× speed, seek); the live socket
-  is closed meanwhile. Invalid lines are counted and skipped; files over 20 MB are refused.
+- `telemetry/useReplay.ts` replays a JSONL trace file on its own clock (play/pause, 0.5–10× speed, seek). The live
+  connection stays open underneath (the simulation demo keeps one session per connection) and demo commands are
+  disabled until Back to live. Invalid lines are counted and skipped; files over 20 MB are refused.
 - `components/` holds stateless views (timeline, metrics, trajectory and map, charts, safety, event log, replay bar).
 The bridge URL defaults to `ws://127.0.0.1:8765`; `?ws=` may override it with another loopback address only.
 Mission phases appear only when a sample carries `state`/`outcome` (harness replay). The live bridge does not yet

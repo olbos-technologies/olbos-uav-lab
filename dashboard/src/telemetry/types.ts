@@ -17,6 +17,11 @@ export type Sample = {
   outcome?: string;
   waypoint?: number;
   waypoints?: number;
+  // Advisory model fields are populated only by the local synthetic demo.
+  ml_status?: string;
+  ml_probability?: number;
+  ml_model?: string;
+  ml_scope?: string;
 };
 
 export type Tone = 'ok' | 'info' | 'warn' | 'critical' | 'neutral';
@@ -58,5 +63,9 @@ export function parseSample(raw: string): Sample {
     outcome: str(r.outcome),
     waypoint: num(r.waypoint),
     waypoints: num(r.waypoints),
+    ml_status: str(r.ml_status),
+    ml_probability: num(r.ml_probability),
+    ml_model: str(r.ml_model),
+    ml_scope: str(r.ml_scope),
   };
 }
