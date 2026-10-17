@@ -3,12 +3,14 @@
 Autonomous UAV simulation and machine-learning research platform built with C++20, PX4, ROS 2, and Gazebo. MIT licensed.
 **Version 0.2 — shared C++ mission architecture; PX4 SITL acceptance pending.**
 
-Dashboard source and production build are included. Screenshot/browser verification is pending: Chromium was unavailable and its download failed in the initial environment.
+![Dashboard replaying a completed kinematic-harness mission](docs/dashboard.png)
+
+The dashboard was checked in headless Chromium against harness replays (nominal and low-battery abort) in dark, light and phone layouts.
 
 ## What runs now
 - Modular C++20 core: explicit ENU/NED types, independent safety supervisor, validated waypoint plans and a shared deterministic MissionController.
 - Kinematic harness using the same mission engine as ROS: nominal waypoints, low battery, stale telemetry, geofence, operator abort and command rejection.
-- React/TypeScript/Vite/Recharts read-only dashboard with trajectory, altitude history, source labels, stale detection and JSONL export.
+- React/TypeScript/Vite/Recharts read-only dashboard: mission phase timeline, waypoint progress, auto-zoom trajectory, altitude/battery charts, event log, stale detection, auto-reconnect, light/dark themes and JSONL export.
 - Read-only WebSocket replay, plus ROS 2 live telemetry bridge source.
 - Offline synthetic health detection and route energy experiments with measured evaluation reports.
 
