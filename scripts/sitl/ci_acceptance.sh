@@ -13,14 +13,32 @@ cd "$(dirname "$0")/../.."
 : "${PX4_DIR:?Set PX4_DIR to a PX4-Autopilot checkout with px4_sitl_default built}"
 OUT=$(mkdir -p "${1:-artifacts/sitl}" && cd "${1:-artifacts/sitl}" && pwd)
 PX4_BIN=$PX4_DIR/build/px4_sitl_default/bin
-export ROS_DOMAIN_ID=42 ROS_LOCALHOST_ONLY=1 UAV_SIMULATION_ONLY=1
+# The runner is a throwaway, isolated VM. ROS_LOCALHOST_ONLY=1 restricts ROS discovery to loopback, which the
+# Micro XRCE-DDS agent's own participant does not follow, so PX4 topics never appear; use full discovery here.
+export ROS_DOMAIN_ID=42 ROS_LOCALHOST_ONLY=0 UAV_SIMULATION_ONLY=1
 set +u
 source /opt/ros/humble/setup.bash
 source ros2_ws/install/setup.bash
 set -u
 
 pids=()
+diagnose() {
+  echo "::group::SITL diagnostics"
+  echo "--- agent.log (tail)"; tail -n 40 "$OUT/agent.log" 2>/dev/null || true
+  echo "--- px4.log (DDS, commander, errors)"
+  grep -iE "uxrce|dds|ready|arm|preflight|error|warn" "$OUT/px4.log" 2>/dev/null | tail -n 60 || true
+  echo "--- px4.log (tail)"; tail -n 30 "$OUT/px4.log" 2>/dev/null || true
+  echo "--- ros2 topic list (ROS_LOCALHOST_ONLY=$ROS_LOCALHOST_ONLY, domain $ROS_DOMAIN_ID)"
+  timeout 20 ros2 topic list --no-daemon --spin-time 3 2>&1 | head -n 40 || true
+  for f in "$OUT"/*.log; do
+    case $f in */agent.log | */px4.log) continue ;; esac
+    echo "--- $(basename "$f") (tail)"; tail -n 40 "$f"
+  done
+  echo "::endgroup::"
+}
 cleanup() {
+  local status=$?
+  ((status == 0)) || diagnose
   for p in "${pids[@]}"; do kill "$p" 2>/dev/null || true; done
   pkill -f sitl_mission 2>/dev/null || true
   wait 2>/dev/null || true
@@ -57,8 +75,8 @@ done
 "$PX4_BIN/px4-param" show UXRCE_DDS_DOM_ID COM_OF_LOSS_T COM_OBL_RC_ACT COM_RC_IN_MODE | tee "$OUT/params.txt"
 "$PX4_BIN/px4-uxrce_dds_client" stop || true
 "$PX4_BIN/px4-uxrce_dds_client" start -t udp -h 127.0.0.1 -p 8888
-wait_for 60 "PX4 topics on ROS domain 42" bash -c "ros2 topic list | grep -q /fmu/out/vehicle_status"
-ros2 topic list | grep /fmu/ | tee "$OUT/topics.txt"
+wait_for 60 "PX4 topics on ROS domain 42" bash -c "ros2 topic list --no-daemon --spin-time 3 | grep -q /fmu/out/vehicle_status"
+ros2 topic list --no-daemon --spin-time 3 | grep /fmu/ | tee "$OUT/topics.txt"
 
 declare -A outcome_name=([1]=COMPLETE [2]=ABORTED_LANDED [3]=FAILED)
 results=()
@@ -68,7 +86,7 @@ fly() { # fly <name> <config> <expected outcome> [state that triggers ~/abort]
   local name=$1 config=$2 expect=$3 abort_in=${4:-} log="$OUT/$1.log" aborted=0 code=""
   echo "== Mission $name ($config), expecting $expect"
   wait_for 60 "vehicle landed and disarmed before $name" bash -c \
-    "ros2 topic echo --once --qos-reliability best_effort \$(ros2 topic list | grep /fmu/out/vehicle_status | head -1) \
+    "ros2 topic echo --once --qos-reliability best_effort \$(ros2 topic list --no-daemon --spin-time 3 | grep /fmu/out/vehicle_status | head -1) \
      | grep -q 'arming_state: 1'"
   bash scripts/run_controller.sh "$config" >"$log" 2>&1 &
   local pid=$!
