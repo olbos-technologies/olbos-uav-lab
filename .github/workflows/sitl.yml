@@ -47,7 +47,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ros-humble-ros-base ros-dev-tools
       - name: Fetch PX4
-        run: git clone --recursive --shallow-submodules --depth 1 --branch "$PX4_REF" https://github.com/PX4/PX4-Autopilot.git "$PX4_DIR"
+        run: |
+          git clone --recursive --shallow-submodules --depth 1 --branch "$PX4_REF" https://github.com/PX4/PX4-Autopilot.git "$PX4_DIR"
+          # SITL does not use NuttX. A shallow NuttX checkout has no nuttx-x.y.z tags, which makes PX4's
+          # version-header script fail; without the checkout the script skips NuttX entirely.
+          git -C "$PX4_DIR" submodule deinit -f platforms/nuttx/NuttX/nuttx platforms/nuttx/NuttX/apps
       - name: Install PX4 toolchain (no NuttX, no Gazebo)
         run: bash "$PX4_DIR/Tools/setup/ubuntu.sh" --no-nuttx --no-sim-tools
       - uses: actions/cache@v4
