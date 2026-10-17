@@ -34,15 +34,16 @@ class SimulationDemoTests(unittest.TestCase):
         self.assertEqual(sample["ml_status"], "VIBRATION_PATTERN")
         self.assertEqual(sample["source"], "SIMULATION_DEMO")
 
-    def test_land_finishes_as_complete_only_after_simulated_descent(self):
+    def test_manual_land_finishes_as_aborted_mission_after_descent(self):
         self.sim.command("start")
         self.sim.tick()
         self.assertTrue(self.sim.command("land")[0])
         self.assertEqual(self.sim.tick()["state"], "LANDING")
         for _ in range(12):
             sample = self.sim.tick()
-        self.assertEqual(sample["state"], "COMPLETE")
-        self.assertEqual(sample["outcome"], "COMPLETE")
+        self.assertEqual(sample["state"], "ABORTED_LANDED")
+        self.assertEqual(sample["outcome"], "ABORTED_LANDED")
+        self.assertEqual(sample["alert"], "OPERATOR_LAND")
         self.assertFalse(sample["armed"])
 
     def test_abort_lands_with_aborted_outcome(self):

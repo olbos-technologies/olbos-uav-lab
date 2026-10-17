@@ -82,7 +82,8 @@ class SimulationDemo:
         if name == "land":
             if not self.armed:
                 return False, "The simulated vehicle is already landed."
-            self._begin_landing("COMPLETE")
+            self.alert = "OPERATOR_LAND"
+            self._begin_landing("ABORTED_LANDED")
             return True, "Simulated landing requested."
         if name == "abort":
             if not self.armed:

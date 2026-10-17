@@ -42,7 +42,7 @@ npm ci
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173/?ws=ws%3A%2F%2F127.0.0.1%3A8766`. The **Safety & health** panel reports the synthetic model label and confidence. Start a mission, then choose **Test anomaly** to send simulated vibration features through the model. **Land** and **Abort** change only the in-memory demo state. The bridge binds to `127.0.0.1:8766`, accepts the dashboard's local development origin, and has no PX4, ROS, networked aircraft, or real-command path. The standard telemetry bridge on port 8765 remains read-only.
+Open `http://127.0.0.1:5173/?ws=ws%3A%2F%2F127.0.0.1%3A8766`. The **Safety & health** panel reports the synthetic model label and top-class score. Start a mission, then choose **Test anomaly** to send simulated vibration features through the model. **Land** and **Abort** change only the in-memory demo state and end with an aborted-mission outcome. The bridge binds to `127.0.0.1:8766`, accepts the dashboard's local development origin, and has no PX4, ROS, networked aircraft, or real-command path. The standard telemetry bridge on port 8765 remains read-only.
 
 Run the bridge unit tests with `python3 -m unittest discover -s tests/integration -p 'test_sim_demo.py'` (after installing the pinned Python requirements for the WebSocket package).
 

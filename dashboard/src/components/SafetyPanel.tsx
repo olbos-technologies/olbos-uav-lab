@@ -37,7 +37,7 @@ export function SafetyPanel({
               <>
                 <span className={`badge tone-${modelTone}`}>{humanize(modelStatus)}</span>
                 <p className="muted ml-detail">
-                  Synthetic model confidence {Math.round((latest?.ml_probability ?? 0) * 100)}% · {latest?.ml_model}
+                  Synthetic top-class score {Math.round((latest?.ml_probability ?? 0) * 100)}% · {latest?.ml_model}
                 </p>
               </>
             ) : (
