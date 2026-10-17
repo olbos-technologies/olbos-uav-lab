@@ -42,7 +42,8 @@ class SitlMission final : public rclcpp::Node {
   double age(Clock::time_point p) const {
     return std::chrono::duration<double>(Clock::now() - p).count();
   }
-  uint64_t stamp() const { return static_cast<uint64_t>(get_clock()->now().nanoseconds() / 1000); }
+  // Not const: rclcpp::Clock::now() is non-const, and a const member only sees a const Clock.
+  uint64_t stamp() { return static_cast<uint64_t>(get_clock()->now().nanoseconds() / 1000); }
   void command(uav::Request request) {
     VehicleCommand m{};
     m.timestamp = stamp();
