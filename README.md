@@ -8,9 +8,12 @@ Dashboard source and production build are included. Screenshot/browser verificat
 ## What runs now
 - Modular C++20 core: explicit ENU/NED types, independent safety supervisor, validated waypoint plans and a shared deterministic MissionController.
 - Kinematic harness using the same mission engine as ROS: nominal waypoints, low battery, stale telemetry, geofence, operator abort and command rejection.
-- React/TypeScript/Vite/Recharts read-only dashboard with trajectory, altitude history, source labels, stale detection and JSONL export.
+- React/TypeScript/Vite/Recharts read-only dashboard with an origin-based geographic map overlay, altitude history, source labels, stale detection and JSONL export. The map uses local ENU telemetry; it is not GPS or navigation.
 - Read-only WebSocket replay, plus ROS 2 live telemetry bridge source.
 - Offline synthetic health detection and route energy experiments with measured evaluation reports.
+
+## Geographic map display
+The dashboard draws local telemetry over OpenStreetMap tiles around an editable display origin (default: a generic Tulsa map center). This visualizes local east/north offsets; it is **not GPS**, a real position fix, or a navigation aid. The map remains read-only. Configure another compatible XYZ raster tile endpoint with `VITE_MAP_TILE_URL`; see `dashboard/.env.example`. The OpenStreetMap Foundation tile service is best-effort and used here for low-volume development; use a dedicated provider for a public or production service, retain visible attribution, and follow the provider's terms.
 
 ## PX4 integration source
 ROS 2 C++ node adapts PX4 messages to the shared core exported by the uav_core ament package. It supports heartbeat warmup, bounded requests, waypoint parameters, an abort service and completion from fresh landed/disarmed observations. Command acceptance never substitutes for observed state.
