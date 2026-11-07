@@ -14,4 +14,3 @@ sitl_mission:
     tracking_seconds: 1.0
     takeoff_height: 5.0
     # Optional ENU navigation triples after vertical takeoff. Empty = smoke ascent/land.
-    waypoints_enu: []

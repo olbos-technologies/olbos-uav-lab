@@ -15,7 +15,7 @@ Run a subset with `bash scripts/run_scenarios.sh gps_jump motor_failure`. The sa
 A deterministic 20 Hz kinematic approximation of a PX4 multicopter: first-order position tracking (0.3 s),
 5 m/s horizontal and 3 m/s vertical limits, 90% wind rejection up to 8 m/s with any excess pushing the airframe,
 0.7 m/s Land descent, position hold when setpoints stop, and auto-disarm 1 s after touchdown once the land detector agrees.
-It is not aerodynamics, PX4 SITL or flight evidence. The same faults still need PX4 SITL runs with ULog evidence (roadmap phase 6).
+It is not aerodynamics, PX4 SITL or flight evidence. The separate [Gazebo x500 SITL suite](gazebo-sitl.md) runs its own controller-observation fault cases with ULog evidence.
 
 ## Invariants checked on every scenario
 | Check | Meaning |

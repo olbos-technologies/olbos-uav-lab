@@ -193,7 +193,8 @@ class MissionController {
       tracking_since_ = -1;
     }
     auto target = config_.waypoints[waypoint_];
-    setpoint_ = step_toward(setpoint_, target, dt, config_.limits.max_speed);
+    if (distance(o.telemetry.position, setpoint_) <= config_.tracking_limit * .5)
+      setpoint_ = step_toward(setpoint_, target, dt, config_.limits.max_speed);
     if (safety_.command(setpoint_) != Fault::None)
       return abort_in_flight("INVALID_COMMAND", now, o);
     if (distance(o.telemetry.position, target) < config_.limits.arrival_radius &&

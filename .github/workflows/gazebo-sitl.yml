@@ -1,0 +1,89 @@
+name: gazebo-x500-sitl
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - core/include/**
+      - config/**
+      - ros2_ws/**
+      - scripts/launch_sitl.sh
+      - scripts/run_controller.sh
+      - scripts/sitl/**
+      - scripts/sync_px4_messages.py
+      - .github/workflows/gazebo-sitl.yml
+  pull_request:
+    paths:
+      - core/include/**
+      - config/**
+      - ros2_ws/**
+      - scripts/launch_sitl.sh
+      - scripts/run_controller.sh
+      - scripts/sitl/**
+      - scripts/sync_px4_messages.py
+      - .github/workflows/gazebo-sitl.yml
+permissions:
+  contents: read
+concurrency:
+  group: gazebo-sitl-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  PX4_REF: v1.16.0
+  AGENT_REF: v2.4.3
+  PX4_DIR: /home/runner/PX4-Autopilot
+jobs:
+  gazebo-sitl:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ROS 2 Humble and Gazebo Harmonic
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common curl gnupg lsb-release ccache
+          sudo add-apt-repository -y universe
+          sudo curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+            -o /usr/share/keyrings/ros-archive-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu jammy main" \
+            | sudo tee /etc/apt/sources.list.d/ros2.list
+          curl -fsSL https://packages.osrfoundation.org/gazebo.gpg \
+            | sudo gpg --dearmor -o /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable jammy main" \
+            | sudo tee /etc/apt/sources.list.d/gazebo-stable.list
+          sudo apt-get update
+          sudo apt-get install -y ros-humble-ros-base ros-dev-tools gz-harmonic
+      - name: Fetch pinned PX4 v1.16.0
+        run: |
+          git clone --recursive --shallow-submodules --depth 1 --branch "$PX4_REF" \
+            https://github.com/PX4/PX4-Autopilot.git "$PX4_DIR"
+          git -C "$PX4_DIR" submodule deinit -f platforms/nuttx/NuttX/nuttx platforms/nuttx/NuttX/apps
+          bash "$PX4_DIR/Tools/setup/ubuntu.sh" --no-nuttx --no-sim-tools
+      - name: Build pinned Micro XRCE-DDS agent
+        run: |
+          git clone --depth 1 --branch "$AGENT_REF" \
+            https://github.com/eProsima/Micro-XRCE-DDS-Agent.git /tmp/Micro-XRCE-DDS-Agent
+          cmake -S /tmp/Micro-XRCE-DDS-Agent -B /tmp/agent-build \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$HOME/agent-install"
+          cmake --build /tmp/agent-build -j"$(nproc)"
+          cmake --install /tmp/agent-build
+          echo "$HOME/agent-install/bin" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$HOME/agent-install/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+      - name: Build PX4 messages and ROS adapter
+        run: |
+          source /opt/ros/humble/setup.bash
+          git clone --depth 1 --branch release/1.16 \
+            https://github.com/PX4/px4_msgs.git ros2_ws/src/px4_msgs
+          python3 scripts/sync_px4_messages.py "$PX4_DIR"
+          cd ros2_ws
+          colcon build --packages-up-to uav_controller --cmake-args -DCMAKE_BUILD_TYPE=Release
+      - name: Run Gazebo x500 missions and sensor-observation faults
+        timeout-minutes: 90
+        run: bash scripts/sitl/gazebo_acceptance.sh artifacts/gazebo-sitl
+      - name: Add Gazebo SITL report to summary
+        if: always()
+        run: cat artifacts/gazebo-sitl/summary.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "No Gazebo SITL summary produced" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gazebo-x500-sitl-evidence
+          path: artifacts/gazebo-sitl
+          if-no-files-found: warn
