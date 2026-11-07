@@ -8,11 +8,17 @@ root=Path(__file__).resolve().parents[1];px4=Path(sys.argv[1]).resolve();dest=ro
 ref=subprocess.check_output(['git','-C',str(px4),'describe','--tags','--exact-match'],text=True).strip()
 if ref!='v1.16.0':raise SystemExit('expected PX4 v1.16.0')
 if not (dest/'package.xml').exists():raise SystemExit('clone px4_msgs release/1.16 first')
-# The package CMake globs msg/*.msg. Use only public current messages, not nested old versions.
-source=list((px4/'msg').glob('*.msg'))
-if not source:raise SystemExit('missing PX4 message sources')
-for old in (dest/'msg').glob('*.msg'):old.unlink()
-for item in source:shutil.copy2(item,dest/'msg'/item.name)
+# PX4 v1.16 keeps current versioned messages in msg/versioned/ and services in srv/.
+messages=list((px4/'msg').glob('*.msg'))+list((px4/'msg'/'versioned').glob('*.msg'))
+services=list((px4/'srv').glob('*.srv'))
+names=[f.name for f in messages+services]
+if not messages:raise SystemExit('missing PX4 message sources')
+if len(names)!=len(set(names)):raise SystemExit('duplicate names across PX4 messages and services')
+for kind,files,pattern in (('msg',messages,'*.msg'),('srv',services,'*.srv')):
+ (dest/kind).mkdir(exist_ok=True)
+ for old in (dest/kind).glob(pattern):old.unlink()
+ for item in files:shutil.copy2(item,dest/kind/item.name)
 lock={'px4':subprocess.check_output(['git','-C',str(px4),'rev-parse','HEAD'],text=True).strip(),
- 'px4_msgs_scaffold':subprocess.check_output(['git','-C',str(dest),'rev-parse','HEAD'],text=True).strip(),'message_files':len(source)}
+ 'px4_msgs_scaffold':subprocess.check_output(['git','-C',str(dest),'rev-parse','HEAD'],text=True).strip(),
+ 'message_files':len(messages),'service_files':len(services)}
 (root/'config/resolved-sources.json').write_text(json.dumps(lock,indent=2)+'\n');print(json.dumps(lock))

@@ -180,6 +180,20 @@ TEST(MissionController, TrackingErrorStopsStreaming) {
   EXPECT_FALSE(d.stream);
   EXPECT_EQ(d.state, uav::State::Landing);
 }
+TEST(MissionController, HoldsSetpointDuringVehicleLagButDetectsSeparation) {
+  Harness h;
+  h.airborne();
+  uav::Decision d;
+  for (int i = 0; i < 80; ++i)
+    d = h.step(false);
+  EXPECT_EQ(d.reason, "NORMAL");
+  EXPECT_TRUE(d.stream);
+  h.observation.telemetry.position.east += 6;
+  for (int i = 0; i < 30 && d.reason == "NORMAL"; ++i)
+    d = h.step(false);
+  EXPECT_EQ(d.reason, "TRACKING_ERROR");
+  EXPECT_FALSE(d.stream);
+}
 TEST(MissionController, InvalidPositionPreemptsControl) {
   Harness h;
   h.airborne();

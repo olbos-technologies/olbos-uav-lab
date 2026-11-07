@@ -1,7 +1,7 @@
 # Olbos UAV Lab
 
 Autonomous UAV simulation and machine-learning research platform built with C++20, PX4, ROS 2, and Gazebo. MIT licensed.
-**Version 0.2 — shared C++ mission architecture; PX4 SITL acceptance pending.**
+**Version 0.2 — shared C++ mission architecture; isolated Gazebo x500 SITL acceptance workflow.**
 
 ![Dashboard replaying a completed kinematic-harness mission](docs/dashboard.png)
 
@@ -48,9 +48,8 @@ Run the bridge unit tests with `python3 -m unittest discover -s tests/integratio
 
 ## PX4 integration source
 ROS 2 C++ node adapts PX4 messages to the shared core exported by the uav_core ament package. It supports heartbeat warmup, bounded requests, waypoint parameters, an abort service and completion from fresh landed/disarmed observations. Command acceptance never substitutes for observed state.
-Launch/runbook targets Ubuntu 22.04 + ROS 2 Humble + PX4 v1.16.0 + Gazebo Harmonic.
-This adapter has **not been compiled or flown in SITL in the initial environment**. ROS/PX4/Gazebo are absent.
-It must pass target-host acceptance before being called a working PX4 simulation MVP.
+The isolated `gazebo-x500-sitl` CI workflow targets Ubuntu 22.04 + ROS 2 Humble + PX4 v1.16.0 + Gazebo Harmonic. It repeats smoke, waypoint and operator-abort missions, runs observation-boundary fault cases, and uploads ULogs, ROS logs, traces and a version/parameter manifest. See the [Gazebo SITL runbook and evidence limits](docs/testing/gazebo-sitl.md).
+The workflow definition is not itself flight evidence. Treat the integration as validated only for a specific green run with its retained evidence artifact; no physical validation is claimed.
 
 ```bash
 bash scripts/test_core.sh
